@@ -26,7 +26,7 @@ hp_wurzel_suchen() {
     return 1
 }
 SELF=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
-if [ -z "$BASE" ] || [ ! -d "$BASE/config/plugins" ] || [ ! -d "$BASE/data/plugins" ]; then
+if [ -z "$BASE" ] || [ ! -d "$BASE/config/plugins" ] || [ ! -d "$BASE/data/plugins" ] || [ ! -f "$BASE/config/system/general.json" ]; then
     BASE=$(hp_wurzel_suchen "$SELF") || BASE=""
 fi
 if [ -z "$BASE" ]; then
@@ -47,6 +47,13 @@ for d in /proc/[0-9]*; do
 done
 # Datenordner, venv, Merker und Zweitschrift tragen Token oder Geraeteadressen; der Ordnername ist oben geprueft.
 rm -rf "$BASE/data/plugins/$PFOLDER" "$BASE/data/plugins/$PFOLDER.venv"
+# Dateien mit Token vor dem Entfernen mit Nullen ueberschreiben, wie in den anderen Linien.
+for hp_f in "$BASE/config/plugins/$PFOLDER.backup.cfg" "$BASE/config/plugins/$PFOLDER.backup.cfg.alt" "$BASE/config/plugins/$PFOLDER.backup.cfg.kaputt" "$BASE/config/plugins/$PFOLDER.backup.cfg.neu" "$BASE/config/plugins/$PFOLDER/homepod4lox.cfg"; do
+    if [ -f "$hp_f" ] && [ ! -L "$hp_f" ]; then
+        head -c "$(stat -c %s "$hp_f" 2>/dev/null || echo 64)" /dev/zero > "$hp_f" 2>/dev/null
+    fi
+done
+rm -f "$BASE/config/plugins/$PFOLDER.backup.cfg.kaputt" "$BASE/config/plugins/$PFOLDER.backup.cfg.neu" "$BASE/data/plugins/$PFOLDER.geraete.json.neu"
 rm -f "$BASE/data/plugins/$PFOLDER.upgrade_laeuft" "$BASE/data/plugins/$PFOLDER.geraete.json" "$BASE/config/plugins/$PFOLDER.backup.cfg" "$BASE/config/plugins/$PFOLDER.backup.cfg.alt"
 echo "<OK> HomePod4Lox: Daten, virtuelle Umgebung und Zweitschrift entfernt."
 exit 0

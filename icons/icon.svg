@@ -9,65 +9,54 @@
       <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.25" />
     </filter>
   </defs>
+
+  <!-- Outer Badge Ring -->
   <circle cx="256" cy="256" r="246" fill="url(#bg-grad)" />
   <circle cx="256" cy="256" r="232" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="3" />
-  <g filter="url(#shadow)">
-    <!-- Lautsprecher: Kugel mit abgeflachter Ober- und Unterseite -->
-    <path d="M 186 92 L 326 92 C 372 124 386 170 386 210 C 386 250 372 296 326 322 L 186 322 C 140 296 126 250 126 210 C 126 170 140 124 186 92 Z" fill="#ffffff" />
-    <!-- Bedienfeld oben -->
-    <ellipse cx="256" cy="104" rx="66" ry="10" fill="#6dac20" />
-    <!-- Stoffnetz -->
-    <g fill="#6dac20">
-      <circle cx="154" cy="142" r="7" />
-      <circle cx="188" cy="142" r="7" />
-      <circle cx="222" cy="142" r="7" />
-      <circle cx="256" cy="142" r="7" />
-      <circle cx="290" cy="142" r="7" />
-      <circle cx="324" cy="142" r="7" />
-      <circle cx="358" cy="142" r="7" />
-      <circle cx="171" cy="168" r="7" />
-      <circle cx="205" cy="168" r="7" />
-      <circle cx="239" cy="168" r="7" />
-      <circle cx="273" cy="168" r="7" />
-      <circle cx="307" cy="168" r="7" />
-      <circle cx="341" cy="168" r="7" />
-      <circle cx="154" cy="194" r="7" />
-      <circle cx="188" cy="194" r="7" />
-      <circle cx="222" cy="194" r="7" />
-      <circle cx="256" cy="194" r="7" />
-      <circle cx="290" cy="194" r="7" />
-      <circle cx="324" cy="194" r="7" />
-      <circle cx="358" cy="194" r="7" />
-      <circle cx="171" cy="220" r="7" />
-      <circle cx="205" cy="220" r="7" />
-      <circle cx="239" cy="220" r="7" />
-      <circle cx="273" cy="220" r="7" />
-      <circle cx="307" cy="220" r="7" />
-      <circle cx="341" cy="220" r="7" />
-      <circle cx="154" cy="246" r="7" />
-      <circle cx="188" cy="246" r="7" />
-      <circle cx="222" cy="246" r="7" />
-      <circle cx="256" cy="246" r="7" />
-      <circle cx="290" cy="246" r="7" />
-      <circle cx="324" cy="246" r="7" />
-      <circle cx="358" cy="246" r="7" />
-      <circle cx="171" cy="272" r="7" />
-      <circle cx="205" cy="272" r="7" />
-      <circle cx="239" cy="272" r="7" />
-      <circle cx="273" cy="272" r="7" />
-      <circle cx="307" cy="272" r="7" />
-      <circle cx="341" cy="272" r="7" />
-      <circle cx="188" cy="298" r="7" />
-      <circle cx="222" cy="298" r="7" />
-      <circle cx="256" cy="298" r="7" />
-      <circle cx="290" cy="298" r="7" />
-      <circle cx="324" cy="298" r="7" />
+
+  <g filter="url(#shadow)" fill="#ffffff">
+    <!-- Main Center Motif: HomePod & Speech Waves -->
+    <g transform="translate(256, 185) scale(1.15)">
+      
+      <!-- HomePod Body (Klassischer, sanft gerundeter Zylinder) -->
+      <path d="M -40 -35 
+               C -40 -60 40 -60 40 -35 
+               L 40 45 
+               C 40 70 -40 70 -40 45 Z" fill="#ffffff" />
+
+      <!-- Top Display Cutout (Siri Touch-Fläche oben) -->
+      <ellipse cx="0" cy="-45" rx="26" ry="6" fill="#6dac20" />
+
+      <!-- Basis-Schattenfuge unten -->
+      <path d="M -26 50 Q 0 58 26 50" fill="none" stroke="#6dac20" stroke-width="4.5" stroke-linecap="round" />
+
+      <!-- Siri Sprachausgabe / Waveform Cutout (Zentrum) -->
+      <rect x="-18" y="-4" width="6" height="12" rx="3" fill="#6dac20" />
+      <rect x="-6" y="-16" width="6" height="36" rx="3" fill="#6dac20" />
+      <rect x="6" y="-8" width="6" height="20" rx="3" fill="#6dac20" />
+      <rect x="18" y="-2" width="6" height="12" rx="3" fill="#6dac20" />
+
+      <!-- Abstrahlende Schallwellen (Links) -->
+      <g fill="none" stroke="#ffffff" stroke-linecap="round">
+        <path d="M -70 -10 A 30 30 0 0 0 -70 40" stroke-width="5" />
+        <path d="M -85 -25 A 50 50 0 0 0 -85 55" stroke-width="5" opacity="0.7" />
+        <path d="M -100 -40 A 70 70 0 0 0 -100 70" stroke-width="5" opacity="0.4" />
+      </g>
+
+      <!-- Abstrahlende Schallwellen (Rechts) -->
+      <g fill="none" stroke="#ffffff" stroke-linecap="round">
+        <path d="M 70 -10 A 30 30 0 0 1 70 40" stroke-width="5" />
+        <path d="M 85 -25 A 50 50 0 0 1 85 55" stroke-width="5" opacity="0.7" />
+        <path d="M 100 -40 A 70 70 0 0 1 100 70" stroke-width="5" opacity="0.4" />
+      </g>
+
     </g>
-    <!-- Schallbogen -->
-    <path d="M 410 150 C 432 188 432 232 410 270" fill="none" stroke="#ffffff" stroke-width="13" stroke-linecap="round" />
-    <path d="M 102 150 C 80 188 80 232 102 270" fill="none" stroke="#ffffff" stroke-width="13" stroke-linecap="round" />
-    <path d="M 118 345 L 394 345" stroke="#ffffff" stroke-width="3" stroke-dasharray="7 7" opacity="0.8" />
+
+    <!-- Dashed Line -->
+    <path d="M 150 345 L 362 345" stroke="#ffffff" stroke-width="4" stroke-dasharray="6 8" opacity="0.8" />
   </g>
-  <text x="256" y="388" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="29" font-weight="900" fill="#ffffff" letter-spacing="0.5">HomePod4Lox</text>
-  <text x="256" y="424" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" letter-spacing="3">LOXBERRY</text>
+
+  <!-- Typography -->
+  <text x="256" y="388" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-weight="900" font-size="29" letter-spacing="0.5">HomePod</text>
+  <text x="256" y="424" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-weight="bold" font-size="20" letter-spacing="3">LOXBERRY</text>
 </svg>

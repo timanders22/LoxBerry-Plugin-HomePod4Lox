@@ -22,7 +22,7 @@ hp_wurzel_suchen() {
     return 1
 }
 SELF=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
-if [ -z "$BASE" ] || [ ! -d "$BASE/config/plugins" ] || [ ! -d "$BASE/data/plugins" ]; then
+if [ -z "$BASE" ] || [ ! -d "$BASE/config/plugins" ] || [ ! -d "$BASE/data/plugins" ] || [ ! -f "$BASE/config/system/general.json" ]; then
     BASE=$(hp_wurzel_suchen "$SELF") || BASE=""
 fi
 if [ -z "$BASE" ]; then
@@ -37,7 +37,10 @@ date +%s > "$MARKE" 2>/dev/null
 if [ -s "$MARKE" ]; then
     echo "<OK> Ansagen bis zum Ende der Aktualisierung gesperrt."
 else
-    echo "<WARNING> Die Marke $MARKE liess sich nicht anlegen."
+    # Ohne Marke hielte preinstall das Upgrade fuer eine Neuinstallation: Zweitschrift beiseite, neues Token, Einstellungen weg.
+    echo "<FAIL> Die Marke $MARKE liess sich nicht anlegen - die Aktualisierung wird abgebrochen,"
+    echo "<FAIL> die bisherige Fassung bleibt unveraendert installiert."
+    exit 2
 fi
 HP_AUSG="$BASE/bin/plugins/$PFOLDER/hp_ausgabe.py"
 hp_ist_lauf() {
@@ -49,26 +52,43 @@ for hp_d in /proc/[0-9]*; do
     hp_n=${hp_d#/proc/}
     if [ "$hp_n" != "$$" ] && hp_ist_lauf "$hp_n"; then
         kill "$hp_n" 2>/dev/null
+        hp_w=0
+        while hp_ist_lauf "$hp_n" && [ "$hp_w" -lt 3 ]; do
+            sleep 1
+            hp_w=$((hp_w + 1))
+        done
+        hp_ist_lauf "$hp_n" && kill -9 "$hp_n" 2>/dev/null
         echo "<INFO> Laufende Ausgabe beendet (PID $hp_n)."
     fi
 done
 CF="$BASE/config/plugins/$PFOLDER/homepod4lox.cfg"
 BK="$BASE/config/plugins/$PFOLDER.backup.cfg"
 if grep -Eq '^(sprechtoken|aktionstoken)="[^"]+"' "$CF" 2>/dev/null; then
-    if cp "$CF" "$BK.neu" 2>/dev/null && chmod 600 "$BK.neu" 2>/dev/null && mv -f "$BK.neu" "$BK" 2>/dev/null; then
+    rm -f "$BK.neu"
+    if ( umask 077; cp "$CF" "$BK.neu" && chmod 600 "$BK.neu" ) 2>/dev/null && cmp -s "$CF" "$BK.neu" && mv -f "$BK.neu" "$BK" 2>/dev/null; then
         echo "<OK> Konfiguration gesichert."
     else
         rm -f "$BK.neu"
         echo "<WARNING> Die Konfiguration liess sich nicht sichern ($BK)."
     fi
-elif [ -f "$BK" ]; then
-    echo "<INFO> Die Konfiguration traegt keine Einstellungen - die vorhandene Zweitschrift bleibt unberuehrt."
+else
+    # Beschaedigt oder ohne Token: das Upgrade ersetzt die Datei, deshalb bleibt ihr Stand zum Nachlesen liegen.
+    if [ -s "$CF" ]; then
+        rm -f "$BK.kaputt"
+        if ( umask 077; cp "$CF" "$BK.kaputt" && chmod 600 "$BK.kaputt" ) 2>/dev/null && cmp -s "$CF" "$BK.kaputt"; then
+            echo "<WARNING> Die Konfiguration traegt kein Token - ihr Stand liegt als $(basename "$BK").kaputt daneben."
+        else
+            rm -f "$BK.kaputt"
+        fi
+    fi
+    [ -f "$BK" ] && echo "<INFO> Die Konfiguration traegt keine Einstellungen - die vorhandene Zweitschrift bleibt unberuehrt."
 fi
 # Die Geraeteliste ueberlebt das Upgrade nur neben dem Datenordner; sonst antwortete jedes Plugin bis zur naechsten Suche KEINE_GERAETE.
 GL="$BASE/data/plugins/$PFOLDER/geraete.json"
 GK="$BASE/data/plugins/$PFOLDER.geraete.json"
 if [ -s "$GL" ]; then
-    if cp "$GL" "$GK.neu" 2>/dev/null && chmod 600 "$GK.neu" 2>/dev/null && mv -f "$GK.neu" "$GK" 2>/dev/null; then
+    rm -f "$GK.neu"
+    if ( umask 077; cp "$GL" "$GK.neu" && chmod 600 "$GK.neu" ) 2>/dev/null && cmp -s "$GL" "$GK.neu" && mv -f "$GK.neu" "$GK" 2>/dev/null; then
         echo "<OK> Geraeteliste gesichert."
     else
         rm -f "$GK.neu"

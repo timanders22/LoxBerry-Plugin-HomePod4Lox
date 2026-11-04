@@ -1,0 +1,41 @@
+#!/usr/bin/env php
+<?php
+/**
+ * HomePod4Lox - Anschluss an den LoxBerry-Healthcheck (Bauart Audioserver NG).
+ *
+ * LoxBerry ruft bin/healthcheck als loxberry auf - einmal mit 'title', einmal mit 'check'. Antwort: JSON mit desc,
+ * status, result, logfile; Status 3 Fehler, 4 Warnung, 5 in Ordnung, 6 Hinweis. NUR AUS DATEIEN: keine Geraetesuche,
+ * kein Netz, nichts angelegt. Die Stufen rechnet hp_gesundheit().
+ */
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
+ini_set('display_errors', '0');
+
+$hp_was = isset($argv[1]) ? strtolower((string) $argv[1]) : 'check';
+if ($hp_was === 'title') {
+    echo "HomePod4Lox\n";
+    exit(0);
+}
+if (basename(dirname(__DIR__)) === 'plugins' && basename(dirname(dirname(__DIR__))) === 'bin') {
+    $hp_lib = dirname(dirname(dirname(__DIR__))) . '/webfrontend/html/plugins/' . basename(__DIR__) . '/hp_lib.php';
+} else {
+    $hp_lib = dirname(__DIR__) . '/webfrontend/html/hp_lib.php';
+}
+if (!is_file($hp_lib)) {
+    echo json_encode(array('desc' => 'HomePod4Lox', 'status' => 3,
+        'result' => 'Die Bibliothek hp_lib.php wurde nicht gefunden - das Plugin ist unvollstaendig installiert.')) . "\n";
+    exit(0);
+}
+require_once $hp_lib;
+if (hp_paths()['home'] === '') {
+    echo json_encode(array('desc' => 'HomePod4Lox', 'status' => 3, 'result' => hp_t('GESUND.KEINE_WURZEL')),
+        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n";
+    exit(0);
+}
+list($hp_status, $hp_text) = hp_gesundheit();
+echo json_encode(array(
+    'desc'    => 'HomePod4Lox',
+    'status'  => (int) $hp_status,
+    'result'  => (string) $hp_text,
+    'logfile' => hp_paths()['log'],
+), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n";
+exit(0);

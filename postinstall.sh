@@ -20,7 +20,7 @@ hp_wurzel_suchen() {
     return 1
 }
 SELF=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
-if [ -z "$BASE" ] || [ ! -d "$BASE/config/plugins" ] || [ ! -d "$BASE/data/plugins" ]; then
+if [ -z "$BASE" ] || [ ! -d "$BASE/config/plugins" ] || [ ! -d "$BASE/data/plugins" ] || [ ! -f "$BASE/config/system/general.json" ]; then
     BASE=$(hp_wurzel_suchen "$SELF") || BASE=""
 fi
 if [ -z "$BASE" ]; then
@@ -52,7 +52,7 @@ if [ ! -f "$MARKE" ] && [ -f "$CF" ] && grep -q '^sprechtoken=""' "$CF" 2>/dev/n
         echo "<OK> Sprechtoken angelegt."
     else
         rm -f "$CF.neu"
-        echo "<WARNING> Das Sprechtoken liess sich nicht anlegen; die Oberflaeche zeigt es im Reiter Test an."
+        echo "<WARNING> Das Sprechtoken liess sich nicht anlegen; im Reiter Einstellungen laesst es sich neu erzeugen."
     fi
 fi
 

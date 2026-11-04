@@ -43,7 +43,7 @@ function hp_wurzel_ermitteln()
 function hp_lbhome()
 {
     $h = getenv('LBHOMEDIR');
-    if ($h && is_dir($h . '/config/plugins') && is_dir($h . '/data/plugins')) {
+    if ($h && is_dir($h . '/config/plugins') && is_dir($h . '/data/plugins') && is_file($h . '/config/system/general.json')) {
         return rtrim($h, '/');
     }
     return hp_wurzel_ermitteln();
@@ -175,6 +175,27 @@ function hp_log($text)
     @file_put_contents($p['log'], date('Y-m-d H:i:s') . ' INFO    ' . $text . "\n", FILE_APPEND);
 }
 
+/** Fehlerausgabe der Hintergrundlaeufe: liegt auf der Ramdisk, deshalb gekappt. */
+function hp_lauf_err_kappen()
+{
+    $f = hp_paths()['logdir'] . '/lauf.err';
+    clearstatcache(true, $f);
+    if (is_file($f) && filesize($f) > HP_LOG_MAX) {
+        $rest = array_slice(file($f, FILE_IGNORE_NEW_LINES) ?: array(), -HP_LOG_REST);
+        @file_put_contents($f, implode("\n", $rest) . "\n");
+    }
+}
+
+function hp_lauf_err_ende($anzahl)
+{
+    $f = hp_paths()['logdir'] . '/lauf.err';
+    if (!is_file($f) || !is_readable($f)) {
+        return array();
+    }
+    $z = file($f, FILE_IGNORE_NEW_LINES);
+    return is_array($z) ? array_slice($z, -$anzahl) : array();
+}
+
 function hp_log_ende($anzahl)
 {
     $f = hp_paths()['log'];
@@ -220,7 +241,8 @@ function hp_wert_pruefen($k, $w)
         case 'sprechen_stunde':
             return (preg_match('/^[0-9]{2,3}\z/', $w) && (int) $w >= 10 && (int) $w <= 240) ? '' : 'EINST.F_STUNDE';
         case 'laut':
-            return ($w === '-1' || (preg_match('/^[0-9]{1,3}\z/', $w) && (int) $w <= 100)) ? '' : 'EINST.F_LAUT';
+            // Wie im Sprachmodul: 0 waere stumm und meldete trotzdem OK=1.
+            return ($w === '-1' || (preg_match('/^[0-9]{1,3}\z/', $w) && (int) $w >= 1 && (int) $w <= 100)) ? '' : 'EINST.F_LAUT';
         case 'laut_max':
             return (preg_match('/^[0-9]{1,3}\z/', $w) && (int) $w >= 1 && (int) $w <= 100) ? '' : 'EINST.F_LAUT_MAX';
         case 'quelle':
@@ -321,11 +343,14 @@ function hp_config($heilen = true)
 function hp_datei_schreiben($pfad, $inhalt, $rechte = 0600)
 {
     $tmp = $pfad . '.neu' . getmypid();
-    if (@file_put_contents($tmp, $inhalt, LOCK_EX) !== strlen($inhalt)) {
+    // Rechte VOR dem Inhalt: die Zweitschrift liegt in einem Ordner, den alle lesen duerfen.
+    if (@file_put_contents($tmp, '') === false) {
+        return false;
+    }
+    if (!@chmod($tmp, $rechte) || @file_put_contents($tmp, $inhalt, LOCK_EX) !== strlen($inhalt)) {
         @unlink($tmp);
         return false;
     }
-    @chmod($tmp, $rechte);
     if (!@rename($tmp, $pfad)) {
         @unlink($tmp);
         return false;
@@ -522,6 +547,7 @@ function hp_hintergrund($argumente)
     if (!is_dir($p['logdir'])) {
         @mkdir($p['logdir'], 0775, true);
     }
+    hp_lauf_err_kappen();
     $befehl = 'nohup setsid nice -n 5 ' . hp_umgebung() . hp_shell_arg(hp_python()) . ' -B '
         . hp_shell_arg($p['bindir'] . '/hp_ausgabe.py') . ' ' . $argumente
         . ' >/dev/null 2>>' . hp_shell_arg($p['logdir'] . '/lauf.err') . ' </dev/null &';
@@ -633,6 +659,32 @@ function hp_bremse(array &$stand, $schluessel, $grenze, $jetzt)
     return '';
 }
 
+/** Eine nicht eingereihte Ansage zaehlt nicht: sonst antwortete die Wiederholung OK=1 UNVERAENDERT, und nichts wuerde gesprochen. */
+function hp_bremse_vergessen($datei, $schluessel, $zeit)
+{
+    $h = @fopen($datei, 'c+');
+    if (!$h) {
+        return;
+    }
+    flock($h, LOCK_EX);
+    $stand = json_decode((string) stream_get_contents($h), true);
+    if (is_array($stand)) {
+        unset($stand['gleich'][$schluessel]);
+        if (isset($stand['stunde']) && is_array($stand['stunde'])) {
+            $i = array_search($zeit, $stand['stunde'], true);
+            if ($i !== false) {
+                array_splice($stand['stunde'], $i, 1);
+            }
+        }
+        ftruncate($h, 0);
+        rewind($h);
+        fwrite($h, (string) json_encode($stand));
+        fflush($h);
+    }
+    flock($h, LOCK_UN);
+    fclose($h);
+}
+
 /** Die Erreichbarkeit der Ziele. Rein bis auf $probe (Adresse, Port, Frist -> bool). Rueckgabe array(erreichbar, Zahl offline). */
 function hp_ziele_proben(array $ziele, $probe, $gesamt = HP_PROBE_GESAMT_S)
 {
@@ -669,7 +721,7 @@ function hp_tcp_probe($adresse, $port, $frist)
 }
 
 /** Auftrag ablegen (0600, atomar). Rueckgabe GRUND|''. */
-function hp_auftrag_ablegen(array $auftrag)
+function hp_auftrag_ablegen(array $auftrag, &$datei = null)
 {
     $d = hp_paths()['datadir'] . '/warteschlange';
     if (!is_dir($d) && !@mkdir($d, 0700, true)) {
@@ -684,7 +736,8 @@ function hp_auftrag_ablegen(array $auftrag)
         return 'SCHREIBFEHLER';
     }
     $name = sprintf('%012d_%s.json', (int) (microtime(true) * 10), bin2hex(random_bytes(4)));
-    return hp_datei_schreiben($d . '/' . $name, $js) ? '' : 'SCHREIBFEHLER';
+    $datei = $d . '/' . $name;
+    return hp_datei_schreiben($datei, $js) ? '' : 'SCHREIBFEHLER';
 }
 
 /**
@@ -725,7 +778,7 @@ function hp_sprechen(array $par, array $cfg, $probe = 'hp_tcp_probe')
     }
     $laut = (int) $cfg['laut'];
     if (isset($par['laut']) && $par['laut'] !== '') {
-        if (!preg_match('/^[0-9]{1,3}\z/', $par['laut']) || (int) $par['laut'] > 100) {
+        if (!preg_match('/^[0-9]{1,3}\z/', $par['laut']) || (int) $par['laut'] < 1 || (int) $par['laut'] > 100) {
             return array(400, array('OK' => 0, 'GRUND' => 'LAUT'));
         }
         $laut = (int) $par['laut'];
@@ -781,6 +834,9 @@ function hp_sprechen(array $par, array $cfg, $probe = 'hp_tcp_probe')
         hp_suche_anstossen();     // vielleicht nur eine neue Adresse
         return array(503, array('OK' => 0, 'OFFLINE' => $weg, 'GRUND' => 'GERAETE_OFFLINE'));
     }
+    if ($weg > 0) {
+        hp_suche_anstossen();     // ein Teil fehlt: auch der kann nur umgezogen sein, sonst bliebe er bis zur naechsten Suche draussen
+    }
     $ids = array();
     foreach ($da as $g) {
         $ids[] = $g['id'];
@@ -799,7 +855,8 @@ function hp_sprechen(array $par, array $cfg, $probe = 'hp_tcp_probe')
     flock($h, LOCK_EX);
     $stand = json_decode((string) stream_get_contents($h), true);
     $stand = is_array($stand) ? $stand : array();
-    $bremse = hp_bremse($stand, $schluessel, (int) $cfg['sprechen_stunde'], time());
+    $bremse_zeit = time();
+    $bremse = hp_bremse($stand, $schluessel, (int) $cfg['sprechen_stunde'], $bremse_zeit);
     ftruncate($h, 0);
     rewind($h);
     fwrite($h, (string) json_encode($stand));
@@ -819,14 +876,52 @@ function hp_sprechen(array $par, array $cfg, $probe = 'hp_tcp_probe')
     }
     $fehler = hp_auftrag_ablegen(array('id' => bin2hex(random_bytes(8)), 'zeit' => time(), 'verfall_s' => (int) $cfg['verfall_s'],
         'text' => $text, 'laut' => $laut, 'quelle' => (string) $cfg['quelle'], 'sprache' => (string) $cfg['sprache'],
-        'vorlauf_ms' => (int) $cfg['vorlauf_ms'], 'ziele' => $ziele));
+        'vorlauf_ms' => (int) $cfg['vorlauf_ms'], 'ziele' => $ziele), $auftrag_datei);
     if ($fehler !== '') {
+        hp_bremse_vergessen($sf, $schluessel, $bremse_zeit);
         return array(503, array('OK' => 0, 'GRUND' => $fehler));
     }
     if (!hp_hintergrund('--lauf')) {
+        // Nicht liegen lassen: sonst spraeche der naechste Lauf diese Ansage zusaetzlich zur Wiederholung.
+        @unlink($auftrag_datei);
+        hp_bremse_vergessen($sf, $schluessel, $bremse_zeit);
         return array(503, array('OK' => 0, 'GRUND' => 'BIBLIOTHEK_FEHLT'));
     }
     return array(200, array('OK' => 1, 'GERAETE' => count($da), 'UNVERAENDERT' => 0, 'OFFLINE' => $weg + (count($f['ziele']) - count($frei)), 'GRUND' => 'EINGEREIHT'));
+}
+
+/**
+ * Fuer bin/healthcheck: array(Status, Text). 3 Fehler, 4 Warnung, 5 in Ordnung, 6 Hinweis. Nur aus Dateien, ohne Selbstheilung.
+ * Die Texte nennen keine Geraetenamen, Adressen oder Token.
+ */
+function hp_gesundheit()
+{
+    if (hp_upgrade_laeuft()) {
+        return array(6, hp_t('GESUND.UPGRADE'));
+    }
+    $cfg = hp_config(false);
+    if (hp_config_lage() === 'kaputt') {
+        return array(3, hp_t('GESUND.KONFIG'));
+    }
+    if (!hp_bibliothek_da()) {
+        return array(3, hp_t('GESUND.BIBLIOTHEK'));
+    }
+    if ((string) $cfg['sprechen_ein'] !== '1') {
+        return array(6, hp_t('GESUND.AUS'));
+    }
+    if (!hp_token_taugt((string) $cfg['sprechtoken'])) {
+        return array(4, hp_t('GESUND.TOKEN'));
+    }
+    $n = count(hp_geraete($cfg));
+    if ($n === 0) {
+        return array(6, hp_t('GESUND.KEINE_GERAETE'));
+    }
+    $l = hp_letzte();
+    if (isset($l['zeit']) && empty($l['ok'])) {
+        $g = isset($l['grund']) ? (string) $l['grund'] : '';
+        return array(4, sprintf(hp_t('GESUND.LETZTE_FEHL'), preg_match('/^[A-Z_]{1,40}\z/', $g) ? $g : '-'));
+    }
+    return array(5, sprintf(hp_t(isset($l['zeit']) ? 'GESUND.OK' : 'GESUND.OK_NEU'), $n));
 }
 
 /** ?aktion=status: lesend, ohne Netz. '-' heisst: nicht bekannt. */

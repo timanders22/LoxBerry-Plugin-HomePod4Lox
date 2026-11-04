@@ -43,6 +43,8 @@ AUDIO_MAX_BYTE = 32 * 1024 * 1024
 RATE = 44100
 KANAELE = 2
 NACHLAUF_MS = 300
+LOG_MAX_BYTE = 262144       # wie HP_LOG_MAX in hp_lib.php
+LOG_REST_ZEILEN = 1500      # wie HP_LOG_REST
 
 # Nur diese Merkmale aus der mDNS-Antwort werden gemerkt und gezeigt - Kennungen wie pk, pi, gid, psi, deviceid bleiben draussen.
 MERKMAL_LISTE = ("am", "model", "ov", "osvers", "fv", "acl", "act", "pw", "flags", "sf", "ft", "features", "cn", "et", "vs", "tp", "igl", "gcgl")
@@ -57,11 +59,15 @@ LOG = logging.getLogger("homepod4lox")
 # Pfade
 # ---------------------------------------------------------------------------
 
+def ist_wurzel(d):
+    return (os.path.isdir(os.path.join(d, "config", "plugins")) and os.path.isdir(os.path.join(d, "data", "plugins"))
+            and os.path.isfile(os.path.join(d, "config", "system", "general.json")))
+
+
 def wurzel_suchen(start):
     d = os.path.abspath(start)
     for _ in range(8):
-        if (os.path.isdir(os.path.join(d, "config", "plugins")) and os.path.isdir(os.path.join(d, "data", "plugins"))
-                and os.path.isfile(os.path.join(d, "config", "system", "general.json"))):
+        if ist_wurzel(d):
             return d
         hoch = os.path.dirname(d)
         if hoch == d:
@@ -72,13 +78,13 @@ def wurzel_suchen(start):
 
 def pfade():
     home = os.environ.get("LBHOMEDIR", "").rstrip("/")
-    if not (home and os.path.isdir(os.path.join(home, "data", "plugins"))):
+    if not (home and ist_wurzel(home)):
         home = wurzel_suchen(os.path.dirname(os.path.abspath(__file__)))
     if not home:
         return None
     ordner = os.path.basename(os.environ.get("LBPPLUGINDIR", "").rstrip("/")) or os.path.basename(
         os.path.dirname(os.path.abspath(__file__)))
-    if ordner in ("", ".", "..", "bin", "plugins"):
+    if ordner in ("", ".", "..", "/", "bin", "plugins", "html", "htmlauth", "webfrontend"):
         ordner = "homepod4lox"
     data = os.path.join(home, "data", "plugins", ordner)
     logd = os.path.join(home, "log", "plugins", ordner)
@@ -88,11 +94,27 @@ def pfade():
             "sperre": os.path.join(data, "lauf.sperre")}
 
 
+def protokoll_kappen(pfad, grenze=LOG_MAX_BYTE, rest=LOG_REST_ZEILEN):
+    """Wie hp_log() in PHP: die Datei liegt auf der Ramdisk, und im Betrieb schreibt nur dieser Lauf. Am Ort, damit der Inode bleibt."""
+    try:
+        if os.path.getsize(pfad) <= grenze:
+            return False
+        with open(pfad, "r+b") as fh:
+            zeilen = fh.read().splitlines(True)[-rest:]
+            fh.seek(0)
+            fh.truncate()
+            fh.writelines(zeilen)
+        return True
+    except OSError:
+        return False
+
+
 def protokoll_einrichten(p):
     LOG.setLevel(logging.INFO)
     logging.getLogger("pyatv").setLevel(logging.ERROR)
     try:
         os.makedirs(p["logd"], exist_ok=True)
+        protokoll_kappen(p["log"])
         h = logging.handlers.WatchedFileHandler(p["log"], encoding="utf-8")
     except OSError:
         h = logging.StreamHandler(sys.stderr)
@@ -294,6 +316,30 @@ def selbsttest():
     pruef("gesamt halb", gesamt([{"grund": "-"}, {"grund": "ZEIT"}]), (1, "ZEIT"))
     pruef("gesamt schlecht", gesamt([{"grund": "ZEIT"}]), (0, "ZEIT"))
     pruef("gesamt leer", gesamt([]), (0, "AUFTRAG_KAPUTT"))
+    pruef("aufruf gut", [aufruf_taugt(a) for a in (["--lauf"], ["--selbsttest"], ["--pruefen"], ["--suchen"], ["--suchen", "--neu"], ["--suchen", "--frist", "6"], ["--suchen", "--frist", "6", "--neu"], ["--neu", "--suchen"])], [True] * 8)
+    pruef("aufruf schlecht", [aufruf_taugt(a) for a in ([], ["--lauf", "--quatsch"], ["--suchen", "--tippfehler"], ["--suchen", "--frist"], ["--suchen", "--frist", "abc"], ["--lauf", "--suchen"], ["--lauf", "--neu"], ["--frist", "6"])], [False] * 8)
+    gl = [{"id": "a", "adresse": "alt", "port": 1}, {"id": "b", "adresse": "x", "port": 2}]
+    pruef("adresse neu", (adresse_eintragen(gl, "a", "neu", 7), gl[0]["adresse"], gl[0]["port"], gl[1]["adresse"]), (True, "neu", 7, "x"))
+    pruef("adresse gleich", adresse_eintragen(gl, "a", "neu", 7), False)
+    pruef("adresse fremd", adresse_eintragen(gl, "z", "neu", 7), False)
+    with tempfile.TemporaryDirectory() as td:
+        f = os.path.join(td, "t.log")
+        with open(f, "wb") as fh:
+            fh.write(b"".join(b"zeile %d\n" % i for i in range(200)))
+        vor = os.stat(f).st_ino
+        pruef("kappen unter grenze", protokoll_kappen(f, 100000, 50), False)
+        pruef("kappen drueber", protokoll_kappen(f, 100, 50), True)
+        with open(f, "rb") as fh:
+            z = fh.read().splitlines()
+        pruef("kappen rest", (len(z), z[0], z[-1], os.stat(f).st_ino == vor), (50, b"zeile 150", b"zeile 199", True))
+        pruef("kappen ohne datei", protokoll_kappen(os.path.join(td, "fehlt")), False)
+        os.makedirs(os.path.join(td, "ohne", "config", "plugins"))
+        os.makedirs(os.path.join(td, "ohne", "data", "plugins"))
+        pruef("wurzel ohne general", ist_wurzel(os.path.join(td, "ohne")), False)
+        os.makedirs(os.path.join(td, "ohne", "config", "system"))
+        with open(os.path.join(td, "ohne", "config", "system", "general.json"), "w") as fh:
+            fh.write("{}")
+        pruef("wurzel mit general", ist_wurzel(os.path.join(td, "ohne")), True)
     print("%d Faelle geprueft, %d Fehlschlaege" % (n[0], n[1]))
     return 1 if n[1] else 0
 
@@ -419,6 +465,29 @@ async def geraete_suchen(frist):
     return aus
 
 
+def adresse_eintragen(liste, kennung, adresse, port):
+    """Rein: neue Adresse in die Geraeteliste. Rueckgabe: hat sich etwas geaendert?"""
+    for g in liste:
+        if isinstance(g, dict) and g.get("id") == kennung:
+            if g.get("adresse") == adresse and g.get("port") == port:
+                return False
+            g["adresse"] = adresse
+            g["port"] = port
+            return True
+    return False
+
+
+def adresse_nachziehen(kennung, adresse, port):
+    """Der Einzelscan fand das Geraet unter einer neuen Adresse: fuer die naechste Probe merken. Scheitern hier stoert die Ansage nicht."""
+    p = pfade()
+    if p is None:
+        return
+    daten = json_lesen(p["geraete"], {})
+    liste = daten.get("geraete") if isinstance(daten, dict) else None
+    if isinstance(liste, list) and adresse_eintragen(liste, kennung, adresse, port):
+        json_schreiben(p["geraete"], daten)
+
+
 async def einmal_spielen(ziel, pfad, laut):
     """Eine Datei an ein Geraet. Rueckgabe: '-' oder die Kennung. Verbindung immer zu."""
     import pyatv
@@ -437,6 +506,8 @@ async def einmal_spielen(ziel, pfad, laut):
     svc = conf.get_service(Protocol.RAOP)
     if svc is None:
         return "NICHT_UNTERSTUETZT"
+    if str(conf.address) != ziel.get("adresse"):
+        adresse_nachziehen(ziel["id"], str(conf.address), int(svc.port))
     if getattr(svc.pairing, "name", "") not in KOPPLUNG_GUT:
         return "KOPPLUNG_NOETIG"
     if svc.requires_password:
@@ -587,7 +658,26 @@ def lauf_pruefen():
     return 0 if pyatv else 1
 
 
+def aufruf_taugt(argv):
+    """Genau ein Hauptbefehl, nur seine Schalter, --frist mit Zahl. Sonst Aufruffehler statt stiller Vorgabe."""
+    if len([a for a in argv if a in ("--selbsttest", "--pruefen", "--suchen", "--lauf")]) != 1:
+        return False
+    if "--suchen" not in argv:
+        return len(argv) == 1
+    rest = [a for a in argv if a != "--suchen"]
+    if rest.count("--neu") > 1 or rest.count("--frist") > 1:
+        return False
+    if "--neu" in rest:
+        rest.remove("--neu")
+    if rest and (len(rest) != 2 or rest[0] != "--frist" or not rest[1].isdigit()):
+        return False
+    return True
+
+
 def main(argv):
+    if not aufruf_taugt(argv):
+        print("Aufruf: hp_ausgabe.py --selbsttest | --pruefen | --suchen [--frist S] [--neu] | --lauf", file=sys.stderr)
+        return 2
     if "--selbsttest" in argv:
         return selbsttest()
     if "--pruefen" in argv:
@@ -600,16 +690,10 @@ def main(argv):
     protokoll_einrichten(p)
     if "--suchen" in argv:
         frist = SUCHE_FRIST_S
-        if "--frist" in argv and argv.index("--frist") + 1 < len(argv):
-            try:
-                frist = max(1, min(SUCHE_FRIST_MAX_S, int(argv[argv.index("--frist") + 1])))
-            except ValueError:
-                frist = SUCHE_FRIST_S
+        if "--frist" in argv:
+            frist = max(1, min(SUCHE_FRIST_MAX_S, int(argv[argv.index("--frist") + 1])))
         return lauf_suchen(p, frist, "--neu" in argv)
-    if "--lauf" in argv:
-        return lauf_warteschlange(p)
-    print("Aufruf: hp_ausgabe.py --selbsttest | --pruefen | --suchen [--frist S] [--neu] | --lauf", file=sys.stderr)
-    return 2
+    return lauf_warteschlange(p)
 
 
 if __name__ == "__main__":

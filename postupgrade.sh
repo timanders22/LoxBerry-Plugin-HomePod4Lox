@@ -18,7 +18,7 @@ hp_wurzel_suchen() {
     return 1
 }
 SELF=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
-if [ -z "$BASE" ] || [ ! -d "$BASE/config/plugins" ] || [ ! -d "$BASE/data/plugins" ]; then
+if [ -z "$BASE" ] || [ ! -d "$BASE/config/plugins" ] || [ ! -d "$BASE/data/plugins" ] || [ ! -f "$BASE/config/system/general.json" ]; then
     BASE=$(hp_wurzel_suchen "$SELF") || BASE=""
 fi
 if [ -z "$BASE" ]; then
@@ -36,7 +36,8 @@ BK="$BASE/config/plugins/$PFOLDER.backup.cfg"
 hp_traegt() { grep -Eq '^(sprechtoken|aktionstoken)="[^"]+"' "$1" 2>/dev/null; }
 if ! hp_traegt "$CF" && hp_traegt "$BK"; then
     mkdir -p "$BASE/config/plugins/$PFOLDER" 2>/dev/null
-    if cp "$BK" "$CF.neu" 2>/dev/null && chmod 600 "$CF.neu" 2>/dev/null && mv -f "$CF.neu" "$CF" 2>/dev/null; then
+    rm -f "$CF.neu"
+    if ( umask 077; cp "$BK" "$CF.neu" && chmod 600 "$CF.neu" ) 2>/dev/null && cmp -s "$BK" "$CF.neu" && mv -f "$CF.neu" "$CF" 2>/dev/null; then
         echo "<OK> Konfiguration aus der Zweitschrift wiederhergestellt."
     else
         rm -f "$CF.neu"

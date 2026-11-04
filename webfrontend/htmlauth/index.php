@@ -70,6 +70,8 @@ if ($hp_post) {
             $hp_neu = $hp_cfg;
             $hp_neu['sprechen_ein'] = isset($_POST['sprechen_ein']) ? '1' : '0';
             $hp_neu['alle_airplay'] = isset($_POST['alle_airplay']) ? '1' : '0';
+            $hp_eingaben['sprechen_ein'] = $hp_neu['sprechen_ein'];
+            $hp_eingaben['alle_airplay'] = $hp_neu['alle_airplay'];
             foreach (array('sprechen_geraet', 'sprechen_stunde', 'laut', 'laut_max', 'quelle', 'sprache', 'vorlauf_ms', 'verfall_s') as $hp_k) {
                 $hp_neu[$hp_k] = $hp_wert($hp_k, $hp_k === 'laut' ? '-1' : '');
                 if ($hp_k === 'laut' && $hp_neu[$hp_k] === '') {
@@ -78,6 +80,7 @@ if ($hp_post) {
                 $hp_m = hp_wert_pruefen($hp_k, $hp_neu[$hp_k]);
                 if ($hp_m !== '') {
                     $hp_fehler[] = hp_t($hp_m);
+                    $hp_eingaben['_mangel'][$hp_k] = 1;
                 }
                 $hp_eingaben[$hp_k] = substr($hp_neu[$hp_k], 0, 200);
             }
@@ -192,7 +195,9 @@ if ($hp_post) {
                 $hp_misslungen[] = hp_t('LOG.F_HAKEN');
                 break;
             }
-            if (is_file($hp_p['log']) && @file_put_contents($hp_p['log'], '') === false) {
+            $hp_err_datei = $hp_p['logdir'] . '/lauf.err';
+            if ((is_file($hp_p['log']) && @file_put_contents($hp_p['log'], '') === false)
+                || (is_file($hp_err_datei) && @file_put_contents($hp_err_datei, '') === false)) {
                 $hp_misslungen[] = hp_t('LOG.F_LEEREN');
             } else {
                 hp_log('Protokoll geleert (Oberflaeche).');
@@ -231,6 +236,13 @@ $hp_aktiv = hp_lauf_aktiv();
 $hp_letzte = hp_letzte();
 $hp_feld = function ($k) use ($hp_cfg, $hp_eingaben) {
     return hp_e(isset($hp_eingaben[$k]) ? $hp_eingaben[$k] : $hp_cfg[$k]);
+};
+/* Nach einer Beanstandung gilt, was eingegeben war, auch bei Haken und Auswahl. */
+$hp_jetzt = function ($k) use ($hp_cfg, $hp_eingaben) {
+    return (string) (isset($hp_eingaben[$k]) ? $hp_eingaben[$k] : $hp_cfg[$k]);
+};
+$hp_mangel = function ($k) use ($hp_eingaben) {
+    return isset($hp_eingaben['_mangel'][$k]) ? ' class="sm-beanstandet" aria-invalid="true"' : '';
 };
 $hp_zeichen = function ($ok) {
     return $ok === true ? '<span class="sm-an">&#10004;</span>' : ($ok === false ? '<span class="sm-aus">&#10008;</span>'
@@ -288,6 +300,7 @@ if ($hp_test_offen) {
     $hp_pruef[] = array($hp_reiter_ok, hp_t('TEST.P_REITER'), sprintf(hp_t('TEST.P_REITER_WERT'), count($hp_a), count($hp_b)));
 }
 $hp_logzeilen = hp_log_ende(300);
+$hp_errzeilen = hp_lauf_err_ende(100);
 
 $hp_rahmen = class_exists('LBWeb', false);
 if ($hp_rahmen) {
@@ -364,6 +377,9 @@ if ($hp_rahmen) {
 .sm-tbl input[type=text], .sm-tbl input[type=password] { width: 100%; box-sizing: border-box; }
 .sm-wrap details { margin: 12px 0; }
 .sm-wrap summary { cursor: pointer; font-weight: 600; color: #4f7d17; }
+</style>
+<style>
+.sm-wrap .sm-beanstandet { border: 2px solid #b00000 !important; background: #fff4f4; }
 </style>
 
 <div class="sm-wrap">
@@ -449,7 +465,7 @@ if ($hp_rahmen) {
 <input data-role="none" type="hidden" name="activetab" value="tab-settings">
 <input data-role="none" type="hidden" name="fmt" value="<?= hp_e($hp_fmt) ?>">
 <input data-role="none" type="hidden" name="formular" value="einstellungen">
-<div class="sm-feld"><label><input data-role="none" type="checkbox" name="sprechen_ein" value="1"<?= (string) $hp_cfg['sprechen_ein'] === '1' ? ' checked' : '' ?>> <?= hp_e(hp_t('EINST.L_EIN')) ?></label>
+<div class="sm-feld"><label><input data-role="none" type="checkbox" name="sprechen_ein" value="1"<?= $hp_jetzt('sprechen_ein') === '1' ? ' checked' : '' ?>> <?= hp_e(hp_t('EINST.L_EIN')) ?></label>
 <div class="sm-hilfe"><?= hp_e(hp_t('EINST.H_EIN')) ?></div></div>
 <div class="sm-feld"><label for="hp_std"><?= hp_e(hp_t('EINST.L_STANDARD')) ?></label>
 <?php if ($hp_geraete) { ?>
@@ -461,31 +477,31 @@ foreach ($hp_geraete as $hp_g) { ?>
 <?php } ?>
 </select>
 <?php } else { ?>
-<input data-role="none" id="hp_std" type="text" name="sprechen_geraet" value="<?= $hp_feld('sprechen_geraet') ?>" maxlength="200">
+<input data-role="none" id="hp_std" type="text" name="sprechen_geraet" value="<?= $hp_feld('sprechen_geraet') ?>" maxlength="200"<?= $hp_mangel('sprechen_geraet') ?>>
 <?php } ?>
 <div class="sm-hilfe"><?= hp_e(hp_t('EINST.H_STANDARD')) ?></div></div>
 <div class="sm-feld"><label for="hp_laut"><?= hp_e(hp_t('EINST.L_LAUT')) ?></label>
-<input data-role="none" id="hp_laut" type="text" name="laut" value="<?= $hp_feld('laut') ?>" maxlength="3" size="4">
+<input data-role="none" id="hp_laut" type="text" name="laut" value="<?= $hp_feld('laut') ?>" maxlength="3" size="4"<?= $hp_mangel('laut') ?>>
 <div class="sm-hilfe"><?= hp_e(hp_t('EINST.H_LAUT')) ?></div></div>
 <div class="sm-feld"><label for="hp_max"><?= hp_e(hp_t('EINST.L_LAUT_MAX')) ?></label>
-<input data-role="none" id="hp_max" type="text" name="laut_max" value="<?= $hp_feld('laut_max') ?>" maxlength="3" size="4"></div>
+<input data-role="none" id="hp_max" type="text" name="laut_max" value="<?= $hp_feld('laut_max') ?>" maxlength="3" size="4"<?= $hp_mangel('laut_max') ?>></div>
 <div class="sm-feld"><label for="hp_quelle"><?= hp_e(hp_t('EINST.L_QUELLE')) ?></label>
-<select data-role="none" id="hp_quelle" name="quelle">
-<option value="lokal"<?= (string) $hp_cfg['quelle'] === 'lokal' ? ' selected' : '' ?>><?= hp_e(hp_t('EINST.QUELLE_LOKAL')) ?></option>
-<option value="google"<?= (string) $hp_cfg['quelle'] === 'google' ? ' selected' : '' ?>><?= hp_e(hp_t('EINST.QUELLE_GOOGLE')) ?></option>
+<select data-role="none" id="hp_quelle" name="quelle"<?= $hp_mangel('quelle') ?>>
+<option value="lokal"<?= $hp_jetzt('quelle') === 'lokal' ? ' selected' : '' ?>><?= hp_e(hp_t('EINST.QUELLE_LOKAL')) ?></option>
+<option value="google"<?= $hp_jetzt('quelle') === 'google' ? ' selected' : '' ?>><?= hp_e(hp_t('EINST.QUELLE_GOOGLE')) ?></option>
 </select>
 <div class="sm-hilfe"><?= hp_e(hp_t('EINST.H_QUELLE')) ?></div></div>
 <div class="sm-feld"><label for="hp_sprache"><?= hp_e(hp_t('EINST.L_SPRACHE')) ?></label>
-<input data-role="none" id="hp_sprache" type="text" name="sprache" value="<?= $hp_feld('sprache') ?>" maxlength="12" size="6"></div>
+<input data-role="none" id="hp_sprache" type="text" name="sprache" value="<?= $hp_feld('sprache') ?>" maxlength="12" size="6"<?= $hp_mangel('sprache') ?>></div>
 <div class="sm-feld"><label for="hp_vor"><?= hp_e(hp_t('EINST.L_VORLAUF')) ?></label>
-<input data-role="none" id="hp_vor" type="text" name="vorlauf_ms" value="<?= $hp_feld('vorlauf_ms') ?>" maxlength="4" size="5">
+<input data-role="none" id="hp_vor" type="text" name="vorlauf_ms" value="<?= $hp_feld('vorlauf_ms') ?>" maxlength="4" size="5"<?= $hp_mangel('vorlauf_ms') ?>>
 <div class="sm-hilfe"><?= hp_e(hp_t('EINST.H_VORLAUF')) ?></div></div>
 <div class="sm-feld"><label for="hp_verf"><?= hp_e(hp_t('EINST.L_VERFALL')) ?></label>
-<input data-role="none" id="hp_verf" type="text" name="verfall_s" value="<?= $hp_feld('verfall_s') ?>" maxlength="3" size="4">
+<input data-role="none" id="hp_verf" type="text" name="verfall_s" value="<?= $hp_feld('verfall_s') ?>" maxlength="3" size="4"<?= $hp_mangel('verfall_s') ?>>
 <div class="sm-hilfe"><?= hp_e(hp_t('EINST.H_VERFALL')) ?></div></div>
 <div class="sm-feld"><label for="hp_stunde"><?= hp_e(hp_t('EINST.L_STUNDE')) ?></label>
-<input data-role="none" id="hp_stunde" type="text" name="sprechen_stunde" value="<?= $hp_feld('sprechen_stunde') ?>" maxlength="3" size="4"></div>
-<div class="sm-feld"><label><input data-role="none" type="checkbox" name="alle_airplay" value="1"<?= (string) $hp_cfg['alle_airplay'] === '1' ? ' checked' : '' ?>> <?= hp_e(hp_t('EINST.L_ALLE')) ?></label>
+<input data-role="none" id="hp_stunde" type="text" name="sprechen_stunde" value="<?= $hp_feld('sprechen_stunde') ?>" maxlength="3" size="4"<?= $hp_mangel('sprechen_stunde') ?>></div>
+<div class="sm-feld"><label><input data-role="none" type="checkbox" name="alle_airplay" value="1"<?= $hp_jetzt('alle_airplay') === '1' ? ' checked' : '' ?>> <?= hp_e(hp_t('EINST.L_ALLE')) ?></label>
 <div class="sm-hilfe"><?= hp_e(hp_t('EINST.H_ALLE')) ?></div></div>
 <div class="sm-feld"><label for="hp_tok"><?= hp_e(hp_t('EINST.L_TOKEN')) ?></label>
 <input data-role="none" id="hp_tok" type="password" name="sprechtoken" value="" size="40" autocomplete="new-password" placeholder="<?= hp_e(sprintf(hp_t('EINST.TOKEN_PLATZ'), strlen((string) $hp_cfg['sprechtoken']))) ?>">
@@ -504,7 +520,7 @@ foreach ($hp_geraete as $hp_g) { ?>
 <div class="sm-step"><b><?= hp_e(hp_t('LOX.S1_TITEL')) ?></b><br><?= hp_e(hp_t('LOX.S1_TEXT')) ?></div>
 <div class="sm-step"><b><?= hp_e(hp_t('LOX.S2_TITEL')) ?></b><br><?= hp_e(hp_t('LOX.S2_TEXT')) ?></div>
 <div class="sm-step"><b><?= hp_e(hp_t('LOX.S3_TITEL')) ?></b><br><?= hp_e(hp_t('LOX.S3_TEXT')) ?>
-<div class="sm-mono"><?= hp_e('curl -s --data-urlencode "aktion=sprechen" --data-urlencode "token=' . (string) $hp_cfg['sprechtoken'] . '" --data-urlencode "geraet=' . ((string) $hp_cfg['sprechen_geraet'] !== '' ? (string) $hp_cfg['sprechen_geraet'] : 'alle') . '" --data-urlencode "text=' . hp_t('TEST.SATZ') . '" ' . $hp_adresse) ?></div></div>
+<div class="sm-mono"><?= hp_e('curl -s --data-urlencode "aktion=sprechen" --data-urlencode "token=<SPRECHTOKEN>" --data-urlencode "geraet=' . ((string) $hp_cfg['sprechen_geraet'] !== '' ? (string) $hp_cfg['sprechen_geraet'] : 'alle') . '" --data-urlencode "text=' . hp_t('TEST.SATZ') . '" ' . $hp_adresse) ?></div></div>
 <div class="sm-step"><b><?= hp_e(hp_t('LOX.S4_TITEL')) ?></b><br><?= hp_e(hp_t('LOX.S4_TEXT')) ?>
 <div class="sm-mono"><?= hp_e('http://<LoxBerry>:' . $hp_webport . '/plugins/' . $hp_p['plugin'] . '/index.php?aktion=status') ?></div></div>
 <div class="sm-step"><b><?= hp_e(hp_t('LOX.S5_TITEL')) ?></b><br><?= hp_e(hp_t('LOX.S5_TEXT')) ?></div>
@@ -642,6 +658,10 @@ if (class_exists('LBWeb', false) && method_exists('LBWeb', 'loglist_html')) {
 <div class="sm-log"><?= hp_e(implode("\n", $hp_logzeilen)) ?></div>
 <?php } else { ?>
 <p class="sm-hilfe"><?= hp_e(hp_t('LOG.LEER')) ?></p>
+<?php } ?>
+<?php if ($hp_errzeilen) { ?>
+<p class="sm-hilfe"><?= hp_e(hp_t('LOG.ERR_TITEL')) ?></p>
+<div class="sm-log"><?= hp_e(implode("\n", $hp_errzeilen)) ?></div>
 <?php } ?>
 <form action="index.php" method="post">
 <input data-role="none" type="hidden" name="activetab" value="tab-log">

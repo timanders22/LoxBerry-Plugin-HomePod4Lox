@@ -40,7 +40,7 @@ Das Plugin braucht beim ersten Einspielen Internet: `postinstall.sh` legt eine v
 
 ```
 POST http://127.0.0.1:<Webport>/plugins/homepod4lox/index.php
-aktion=sprechen&token=<T>&text=<Text>[&geraet=<Name|Name,Name|alle>][&laut=0-100]
+aktion=sprechen&token=<T>&text=<Text>[&geraet=<Name|Name,Name|alle>][&laut=1-100]
 ```
 
 Nur von diesem LoxBerry. Gesendet ist `HTTP 200` mit Zeilenanfang `SPRECHEN;OK=1`; das heißt eingereiht, nicht gesprochen. Die Schnittstelle gleicht Chromecast 4 Lox NG. Das Token steht in `config/plugins/homepod4lox/homepod4lox.cfg` (`sprechtoken`), das gemeinsame Sprachmodul liest es von dort.
@@ -49,7 +49,28 @@ Nur von diesem LoxBerry. Gesendet ist `HTTP 200` mit Zeilenanfang `SPRECHEN;OK=1
 
 Eigenständiges Plugin (MIT, siehe `LICENSE`). Es lädt beim Einspielen pyatv (MIT, Pierre Ståhl) und miniaudio (MIT) aus PyPI; siehe `NOTICE`. „Apple“, „HomePod“ und „AirPlay“ sind Marken von Apple Inc.; dieses Plugin hat mit Apple nichts zu tun.
 
+## Neu in 0.9.1
+
+Korrekturen nach einer Fremdprüfung des Codes. Weiter ohne HomePod gebaut, nicht am Gerät gemessen.
+
+- **Das Sprechtoken steht nicht mehr in der Seite.** Das Beispiel im Reiter „Einbindung in Loxone“ druckte es im Klartext in den HTML-Quelltext. Jetzt steht dort ein Platzhalter. Das Sprachmodul anderer Plugins liest das Token weiter selbst aus der Konfiguration.
+- **Lautstärke 0 ist abgewiesen.** Der HomePod hätte stumm „gesprochen“ und das Plugin OK=1 gemeldet. Erlaubt sind 1 bis 100 oder -1 für „nicht verstellen“, wie im gemeinsamen Sprachmodul.
+- **Eine fehlgeschlagene Ansage sperrt die Wiederholung nicht mehr.** Scheiterte das Einreihen, antwortete die Wiederholung 30 Sekunden lang fälschlich „OK, unverändert“.
+- **Upgrade ohne Marke bricht ab.** Sonst gingen Einstellungen und Token verloren. Die bisherige Fassung bleibt dann installiert.
+- **Geheimnisse nie mit offenen Rechten.** Konfiguration, Zweitschrift und Warteschlange bekommen ihre Rechte, bevor der Inhalt geschrieben wird; dasselbe gilt für die Hakenskripte.
+- **Neue Adresse eines HomePod.** Fehlt ein Teil einer Gruppe, wird jetzt auch neu gesucht; vorher blieb ein umgezogener HomePod bis zur nächsten Suche draußen. Findet der Einzelscan eine neue Adresse, wird sie gemerkt.
+- **Protokolle wachsen nicht mehr unbegrenzt.** `homepod4lox.log` wird auch im Sprechbetrieb gekappt, `lauf.err` ebenso; sie erscheint im Reiter „Logdateien“ und wird mit geleert.
+- **Formular nach einer Beanstandung.** Haken und Sprachquelle bleiben wie eingegeben, beanstandete Felder sind markiert.
+- **Kleineres:** gleiche Wurzelprüfung überall, unbekannte Schalter von `hp_ausgabe.py` werden abgewiesen, eine laufende Ausgabe wird beim Upgrade abgewartet, eine Konfiguration ohne Token bleibt als `.kaputt` lesbar liegen, die Deinstallation überschreibt Dateien mit Token vor dem Entfernen.
+- **Texte:** Das gemeinsame Sprachmodul kennt das Ziel seit 1.4.0.
+- **Neues Symbol.**
+- **Neu: LoxBerry-Healthcheck.** `bin/healthcheck` meldet aus Dateien, ohne Netz, ob Bibliothek, Konfiguration, Token und Geräte stimmen und ob die letzte Ansage gelang.
+
 ## Änderungen
+
+### 0.9.1
+
+Siehe „Neu in 0.9.1“.
 
 ### 0.9.0
 
