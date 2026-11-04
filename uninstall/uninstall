@@ -1,0 +1,52 @@
+#!/bin/bash
+# HomePod4Lox - uninstall/uninstall. Laeuft als root.
+# LoxBerry ruft bei einer Deinstallation jedes uninstall/<name>*: nur fuer DIESES Plugin handeln ($2 = homepod4lox).
+if [ -n "$2" ] && [ "$2" != "homepod4lox" ]; then
+    echo "<INFO> Deinstallation von '$2' - dieses Skript gehoert zu 'homepod4lox' und tut nichts."
+    exit 0
+fi
+ARGV3=$3
+ARGV5=$5
+PFOLDER="${ARGV3:-homepod4lox}"
+BASE="${ARGV5:-$LBHOMEDIR}"
+case "$PFOLDER" in
+    ''|*/*|*..*|*'*'*|*'?'*) echo "<WARNING> Unzulaessiger Ordnername '$PFOLDER' - nichts getan."; exit 1 ;;
+esac
+hp_wurzel_suchen() {
+    hp_v=$(cd "$1" 2>/dev/null && pwd -P) || return 1
+    hp_i=0
+    while [ -n "$hp_v" ] && [ "$hp_v" != "/" ] && [ "$hp_i" -lt 8 ]; do
+        if [ -d "$hp_v/config/plugins" ] && [ -d "$hp_v/data/plugins" ] && [ -f "$hp_v/config/system/general.json" ]; then
+            echo "$hp_v"
+            return 0
+        fi
+        hp_v=$(dirname "$hp_v")
+        hp_i=$((hp_i + 1))
+    done
+    return 1
+}
+SELF=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
+if [ -z "$BASE" ] || [ ! -d "$BASE/config/plugins" ] || [ ! -d "$BASE/data/plugins" ]; then
+    BASE=$(hp_wurzel_suchen "$SELF") || BASE=""
+fi
+if [ -z "$BASE" ]; then
+    echo "<WARNING> Es wurde kein LoxBerry-Wurzelverzeichnis gefunden - es wurde NICHTS geloescht."
+    exit 1
+fi
+HP_AUSG="$BASE/bin/plugins/$PFOLDER/hp_ausgabe.py"
+for d in /proc/[0-9]*; do
+    mapfile -d '' -t a 2>/dev/null < "$d/cmdline" || continue
+    if [ "${#a[@]}" -ge 2 ] && [[ "${a[0]}" =~ (^|/)python[0-9.]*$ ]]; then
+        for x in "${a[@]:1}"; do
+            if [ "$x" = "$HP_AUSG" ]; then
+                kill "${d#/proc/}" 2>/dev/null
+                break
+            fi
+        done
+    fi
+done
+# Datenordner, venv, Merker und Zweitschrift tragen Token oder Geraeteadressen; der Ordnername ist oben geprueft.
+rm -rf "$BASE/data/plugins/$PFOLDER" "$BASE/data/plugins/$PFOLDER.venv"
+rm -f "$BASE/data/plugins/$PFOLDER.upgrade_laeuft" "$BASE/data/plugins/$PFOLDER.geraete.json" "$BASE/config/plugins/$PFOLDER.backup.cfg" "$BASE/config/plugins/$PFOLDER.backup.cfg.alt"
+echo "<OK> HomePod4Lox: Daten, virtuelle Umgebung und Zweitschrift entfernt."
+exit 0

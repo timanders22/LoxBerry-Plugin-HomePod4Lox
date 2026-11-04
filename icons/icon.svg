@@ -1,0 +1,73 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg-grad" cx="50%" cy="50%" r="50%" fx="35%" fy="35%">
+      <stop offset="0%" stop-color="#7dc424" />
+      <stop offset="65%" stop-color="#6dac20" />
+      <stop offset="100%" stop-color="#568819" />
+    </radialGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+  </defs>
+  <circle cx="256" cy="256" r="246" fill="url(#bg-grad)" />
+  <circle cx="256" cy="256" r="232" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="3" />
+  <g filter="url(#shadow)">
+    <!-- Lautsprecher: Kugel mit abgeflachter Ober- und Unterseite -->
+    <path d="M 186 92 L 326 92 C 372 124 386 170 386 210 C 386 250 372 296 326 322 L 186 322 C 140 296 126 250 126 210 C 126 170 140 124 186 92 Z" fill="#ffffff" />
+    <!-- Bedienfeld oben -->
+    <ellipse cx="256" cy="104" rx="66" ry="10" fill="#6dac20" />
+    <!-- Stoffnetz -->
+    <g fill="#6dac20">
+      <circle cx="154" cy="142" r="7" />
+      <circle cx="188" cy="142" r="7" />
+      <circle cx="222" cy="142" r="7" />
+      <circle cx="256" cy="142" r="7" />
+      <circle cx="290" cy="142" r="7" />
+      <circle cx="324" cy="142" r="7" />
+      <circle cx="358" cy="142" r="7" />
+      <circle cx="171" cy="168" r="7" />
+      <circle cx="205" cy="168" r="7" />
+      <circle cx="239" cy="168" r="7" />
+      <circle cx="273" cy="168" r="7" />
+      <circle cx="307" cy="168" r="7" />
+      <circle cx="341" cy="168" r="7" />
+      <circle cx="154" cy="194" r="7" />
+      <circle cx="188" cy="194" r="7" />
+      <circle cx="222" cy="194" r="7" />
+      <circle cx="256" cy="194" r="7" />
+      <circle cx="290" cy="194" r="7" />
+      <circle cx="324" cy="194" r="7" />
+      <circle cx="358" cy="194" r="7" />
+      <circle cx="171" cy="220" r="7" />
+      <circle cx="205" cy="220" r="7" />
+      <circle cx="239" cy="220" r="7" />
+      <circle cx="273" cy="220" r="7" />
+      <circle cx="307" cy="220" r="7" />
+      <circle cx="341" cy="220" r="7" />
+      <circle cx="154" cy="246" r="7" />
+      <circle cx="188" cy="246" r="7" />
+      <circle cx="222" cy="246" r="7" />
+      <circle cx="256" cy="246" r="7" />
+      <circle cx="290" cy="246" r="7" />
+      <circle cx="324" cy="246" r="7" />
+      <circle cx="358" cy="246" r="7" />
+      <circle cx="171" cy="272" r="7" />
+      <circle cx="205" cy="272" r="7" />
+      <circle cx="239" cy="272" r="7" />
+      <circle cx="273" cy="272" r="7" />
+      <circle cx="307" cy="272" r="7" />
+      <circle cx="341" cy="272" r="7" />
+      <circle cx="188" cy="298" r="7" />
+      <circle cx="222" cy="298" r="7" />
+      <circle cx="256" cy="298" r="7" />
+      <circle cx="290" cy="298" r="7" />
+      <circle cx="324" cy="298" r="7" />
+    </g>
+    <!-- Schallbogen -->
+    <path d="M 410 150 C 432 188 432 232 410 270" fill="none" stroke="#ffffff" stroke-width="13" stroke-linecap="round" />
+    <path d="M 102 150 C 80 188 80 232 102 270" fill="none" stroke="#ffffff" stroke-width="13" stroke-linecap="round" />
+    <path d="M 118 345 L 394 345" stroke="#ffffff" stroke-width="3" stroke-dasharray="7 7" opacity="0.8" />
+  </g>
+  <text x="256" y="388" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="29" font-weight="900" fill="#ffffff" letter-spacing="0.5">HomePod4Lox</text>
+  <text x="256" y="424" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" letter-spacing="3">LOXBERRY</text>
+</svg>

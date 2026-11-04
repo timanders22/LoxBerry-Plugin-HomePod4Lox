@@ -1,0 +1,12 @@
+# Diese Pakete installiert LoxBerry mit "apt-get -y install" als root waehrend der Plugin-Installation.
+#
+# python3-venv: postinstall.sh legt die virtuelle Umgebung an (Debian 12/13 sperren pip im System-Python, PEP 668).
+# gcc, libc6-dev, python3-dev, libffi-dev: pyatv zieht miniaudio aus PyPI; fuer aarch64 gibt es dort kein fertiges Wheel,
+# es wird auf dem LoxBerry uebersetzt (einige Minuten; beim Upgrade nicht erneut, die venv bleibt liegen).
+python3-venv
+python3-dev
+gcc
+libc6-dev
+libffi-dev
+# Die oertliche Sprachquelle. Klingt maschinell, braucht dafuer kein Internet.
+espeak-ng

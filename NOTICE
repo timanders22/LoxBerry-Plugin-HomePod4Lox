@@ -1,0 +1,10 @@
+HomePod4Lox
+Copyright (c) 2026 HomePod4Lox Plugin Authors, MIT-Lizenz (LICENSE).
+
+Dieses Archiv enthaelt keinen Fremdcode. postinstall.sh laedt beim Einspielen aus PyPI:
+  pyatv 0.18.0, MIT, Copyright (c) 2020 Pierre Staahl, https://github.com/postlund/pyatv
+  miniaudio, MIT, Irmen de Jong, https://github.com/irmen/pyminiaudio
+  und deren Abhaengigkeiten (aiohttp, cryptography, zeroconf, protobuf, pydantic u. a.) unter ihren eigenen Lizenzen.
+espeak-ng kommt als Debian-Paket (GPL-3.0) und wird nur als eigenes Programm aufgerufen.
+
+Apple, HomePod und AirPlay sind Marken von Apple Inc. Dieses Plugin steht in keiner Verbindung zu Apple.

@@ -1,0 +1,3 @@
+# HomePod4Lox - nur aus PyPI. pyatv ist rein Python und fest genagelt: stream_file heisst dort selbst "incubating", und gemessen
+# ist diese Fassung. Die Abhaengigkeiten sind nur nach unten begrenzt (von pyatv selbst), damit es auf jeder Architektur einen Weg gibt.
+pyatv==0.18.0
