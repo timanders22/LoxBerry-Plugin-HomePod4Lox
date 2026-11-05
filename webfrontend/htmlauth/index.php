@@ -155,6 +155,7 @@ if ($hp_post) {
                     $hp_misslungen[] = hp_t('SICH.F_DATEI');
                     break;
                 }
+                while (ob_get_level() > 0) { @ob_end_clean(); }
                 header('Content-Type: application/json; charset=utf-8');
                 header('Content-Disposition: attachment; filename="homepod4lox-' . date('Ymd-Hi') . '.json"');
                 echo $hp_js;

@@ -49,6 +49,10 @@ Nur von diesem LoxBerry. Gesendet ist `HTTP 200` mit Zeilenanfang `SPRECHEN;OK=1
 
 Eigenständiges Plugin (MIT, siehe `LICENSE`). Es lädt beim Einspielen pyatv (MIT, Pierre Ståhl) und miniaudio (MIT) aus PyPI; siehe `NOTICE`. „Apple“, „HomePod“ und „AirPlay“ sind Marken von Apple Inc.; dieses Plugin hat mit Apple nichts zu tun.
 
+## Neu in 0.9.2
+
+- Vor einem Download wird jeder offene Ausgabepuffer geleert: PHP-Warnungen oder Reste landen nicht mehr in der heruntergeladenen Datei.
+
 ## Neu in 0.9.1
 
 Korrekturen nach einer Fremdprüfung des Codes. Weiter ohne HomePod gebaut, nicht am Gerät gemessen.
