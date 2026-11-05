@@ -49,6 +49,11 @@ Nur von diesem LoxBerry. Gesendet ist `HTTP 200` mit Zeilenanfang `SPRECHEN;OK=1
 
 Eigenständiges Plugin (MIT, siehe `LICENSE`). Es lädt beim Einspielen pyatv (MIT, Pierre Ståhl) und miniaudio (MIT) aus PyPI; siehe `NOTICE`. „Apple“, „HomePod“ und „AirPlay“ sind Marken von Apple Inc.; dieses Plugin hat mit Apple nichts zu tun.
 
+## Neu in 0.9.3
+
+- **Update-Schutz:** Lassen sich die Konfiguration oder die Geräteliste vor einem Update nicht sichern (etwa volle Karte, fehlende Rechte), bricht das Update jetzt ab, und die bisherige Fassung bleibt mit allen Einstellungen installiert. Bisher lief es weiter, und der Installer löschte die Originale. Dasselbe gilt, wenn kein LoxBerry-Verzeichnis gefunden wird. Eine vorhandene Sicherung wird erst ersetzt, wenn die neue vollständig und geprüft vorliegt.
+- **Gescheiterte Ansage:** Wiederholt Loxone eine Ansage, die nicht gesprochen werden konnte, wird sie binnen 30 Sekunden nicht mehr als „unverändert“ verschluckt.
+
 ## Neu in 0.9.2
 
 - Vor einem Download wird jeder offene Ausgabepuffer geleert: PHP-Warnungen oder Reste landen nicht mehr in der heruntergeladenen Datei.

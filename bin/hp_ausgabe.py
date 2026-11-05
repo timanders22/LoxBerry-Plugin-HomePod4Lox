@@ -246,6 +246,41 @@ def auftrag_pruefen(a, jetzt):
     return ""
 
 
+def bremse_streichen(stand, schluessel, zeit):
+    """0.9.2 (HP-1): Merker und Stundenzaehler einer nicht gesprochenen Ansage aus dem Stand von bremse.json nehmen."""
+    gleich = stand.get("gleich")
+    if isinstance(gleich, dict):
+        gleich.pop(schluessel, None)
+    stunde = stand.get("stunde")
+    if isinstance(stunde, list) and zeit in stunde:
+        stunde.remove(zeit)
+    return stand
+
+
+def bremse_vergessen(p, a):
+    """0.9.2 (HP-1): bis 0.9.1 antwortete die Wiederholung einer gescheiterten Ansage binnen 30 s OK=1 UNVERAENDERT=1, und
+    gesprochen wurde nichts - der Merker fiel beim Einreihen. Gegenstueck zu hp_bremse_vergessen() in hp_lib.php, dieselbe Sperre."""
+    schluessel = a.get("schluessel") if isinstance(a, dict) else None
+    if not isinstance(schluessel, str) or not schluessel:
+        return
+    import fcntl
+    try:
+        with open(os.path.join(p["data"], "bremse.json"), "r+", encoding="utf-8") as h:
+            fcntl.flock(h, fcntl.LOCK_EX)
+            try:
+                stand = json.loads(h.read() or "{}")
+            except ValueError:
+                return
+            if not isinstance(stand, dict):
+                return
+            bremse_streichen(stand, schluessel, a.get("bremse_zeit"))
+            h.seek(0)
+            h.truncate()
+            h.write(json.dumps(stand))
+    except OSError as fehler:
+        LOG.warning("bremse.json nicht schreibbar: %s", type(fehler).__name__)
+
+
 def gesamt(ergebnisse):
     """(ok, grund) ueber alle Ziele: ok, wenn eines gespielt hat; grund '-' nur, wenn alle gespielt haben."""
     if not ergebnisse:
@@ -296,6 +331,8 @@ def selbsttest():
     pruef("zusammen bleibt", [(g["id"], g["da"]) for g in z], [("a", 0), ("b", 1)])
     pruef("zusammen neu name", z[1]["name"], "Kueche neu")
     pruef("zusammen ersetzen", [g["id"] for g in geraete_zusammenfuehren(alt, neu, 7, True)], ["b"])
+    pruef("bremse streichen", bremse_streichen({"gleich": {"k": 5, "n": 6}, "stunde": [5, 6]}, "k", 5), {"gleich": {"n": 6}, "stunde": [6]})
+    pruef("bremse streichen, fremde Zeit bleibt", bremse_streichen({"gleich": {}, "stunde": [6]}, "k", None), {"gleich": {}, "stunde": [6]})
     pruef("kennung auth", fehler_kennung("AuthenticationError"), "KOPPLUNG_NOETIG")
     pruef("kennung http", fehler_kennung("HttpError"), "ABGELEHNT")
     pruef("kennung zeit", fehler_kennung("TimeoutError"), "ZEIT")
@@ -585,6 +622,7 @@ def auftrag_ausfuehren(p, datei):
     if fehler:
         LOG.warning("Auftrag verworfen: %s (%d Zeichen)", fehler, laenge)
         letzte_merken(p, 0, fehler, [], laenge)
+        bremse_vergessen(p, a)
         return True
     pfad = ""
     try:
@@ -593,10 +631,12 @@ def auftrag_ausfuehren(p, datei):
         except RuntimeError as f:
             LOG.warning("Sprachquelle: %s", f)
             letzte_merken(p, 0, str(f), [], laenge)
+            bremse_vergessen(p, a)
             return True
         except Exception as f:      # etwa eine fehlende Bibliothek: gesagt, nicht verschluckt
             LOG.error("Sprachquelle: %s", type(f).__name__)
             letzte_merken(p, 0, "SPRACHQUELLE", [], laenge)
+            bremse_vergessen(p, a)
             return True
         erg = asyncio.run(auftrag_abspielen(a, pfad, dauer))
         ok, grund = gesamt(erg)
@@ -606,6 +646,8 @@ def auftrag_ausfuehren(p, datei):
             else:
                 LOG.warning("Ansage an %s nicht gesendet: %s (%d Zeichen, %.1f s)", e["name"], e["grund"], laenge, e["sek"])
         letzte_merken(p, ok, grund, erg, laenge)
+        if not ok:          # hat wenigstens ein Ziel gespielt, bleibt der Merker: sonst spraeche die Wiederholung dort doppelt
+            bremse_vergessen(p, a)
     finally:
         if pfad:
             try:

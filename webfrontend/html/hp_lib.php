@@ -874,8 +874,9 @@ function hp_sprechen(array $par, array $cfg, $probe = 'hp_tcp_probe')
     foreach ($da as $g) {
         $ziele[] = array('id' => (string) $g['id'], 'name' => (string) $g['name'], 'adresse' => (string) (isset($g['adresse']) ? $g['adresse'] : ''));
     }
+    // 0.9.2 (HP-1): der Lauf streicht den Merker, wenn er nichts gesprochen hat (bin/hp_ausgabe.py, bremse_vergessen).
     $fehler = hp_auftrag_ablegen(array('id' => bin2hex(random_bytes(8)), 'zeit' => time(), 'verfall_s' => (int) $cfg['verfall_s'],
-        'text' => $text, 'laut' => $laut, 'quelle' => (string) $cfg['quelle'], 'sprache' => (string) $cfg['sprache'],
+        'schluessel' => $schluessel, 'bremse_zeit' => $bremse_zeit, 'text' => $text, 'laut' => $laut, 'quelle' => (string) $cfg['quelle'], 'sprache' => (string) $cfg['sprache'],
         'vorlauf_ms' => (int) $cfg['vorlauf_ms'], 'ziele' => $ziele), $auftrag_datei);
     if ($fehler !== '') {
         hp_bremse_vergessen($sf, $schluessel, $bremse_zeit);
