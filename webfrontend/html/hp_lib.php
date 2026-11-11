@@ -377,26 +377,89 @@ function hp_token_erzeugen()
     return bin2hex(random_bytes(16));
 }
 
-/** Beide Token entstehen einmal, nur in der angemeldeten Oberflaeche und in postinstall.sh, nie am Endpunkt. */
-function hp_config_vervollstaendigen(array $cfg)
+/**
+ * Beide Token entstehen einmal, nur in der angemeldeten Oberflaeche und in postinstall.sh, nie am Endpunkt.
+ *
+ * Seit 0.9.4 (Regeln/05 "Die Konfiguration wird vervollstaendigt, nicht nur ergaenzt"): danach werden fehlende
+ * Schluessel EINMAL mit ihrer Vorgabe als Zeile schluessel="wert" an homepod4lox.cfg angehaengt. Bis 0.9.3 ergaenzte
+ * hp_config() sie nur im Speicher. Bauform BLE-Scanner 1.3.40: die Zeilen der Datei bleiben unveraendert stehen,
+ * auch fremde und solche mit einem Wert, den hp_config() verwirft; kein Neubau ueber hp_cfg_als_text().
+ * - Nur mit LoxBerry-Wurzel, nicht waehrend einer Aktualisierung (hp_upgrade_laeuft()), nur wenn die Datei ein
+ *   gueltiges, nicht leeres aktionstoken traegt (eine Datei ohne ist Sache des ersten Speicherns bzw. der
+ *   Selbstheilung), nur wenn etwas fehlt - damit bleibt es bei einem Schreibvorgang.
+ * - Lese-Regel: ein FEHLENDES sprechtoken heisst "nie gesetzt", und die Oberflaeche erzeugt es (oben); ein leeres
+ *   hiesse "bewusst geleert". Es wird deshalb nie als leere Zeile nachgetragen.
+ * - Geschrieben wie beim Speichern: hp_datei_schreiben(), 0600, Zweitschrift mit demselben Inhalt. Eine
+ *   Protokollzeile mit den Namen, nie Werte.
+ * $token_erzeugen = false (bin/hp_vervollstaendigen.php aus postupgrade.sh): kein Token entsteht, nur der Nachtrag.
+ * $ergebnis: array('stand' => ohne_wurzel|token|ruht|ohne_datei|ohne_merkwort|vollstaendig|ergaenzt|fehler,
+ *                  'schluessel' => array(...)).
+ */
+function hp_config_vervollstaendigen(array $cfg, $token_erzeugen = true, &$ergebnis = null)
 {
+    $ergebnis = array('stand' => 'ohne_wurzel', 'schluessel' => array());
     $p = hp_paths();
     if ($p['home'] === '') {
         return $cfg;
     }
     $roh = is_file($p['config']) ? hp_cfg_aus_text((string) @file_get_contents($p['config'])) : array();
     $neu = false;
-    if ((string) $cfg['aktionstoken'] === '') {
+    if ($token_erzeugen && (string) $cfg['aktionstoken'] === '') {
         $cfg['aktionstoken'] = hp_token_erzeugen();
         $neu = true;
     }
-    if (!array_key_exists('sprechtoken', $roh)) {
+    if ($token_erzeugen && !array_key_exists('sprechtoken', $roh)) {
         $cfg['sprechtoken'] = hp_token_erzeugen();
         $neu = true;
     }
     if ($neu) {
+        // hp_cfg_als_text() schreibt jeden Schluessel der Vorgaben: danach fehlt keiner mehr.
         hp_config_speichern($cfg);
+        $ergebnis = array('stand' => 'token', 'schluessel' => array());
+        return $cfg;
     }
+    if (hp_upgrade_laeuft()) {
+        $ergebnis = array('stand' => 'ruht', 'schluessel' => array());
+        return $cfg;
+    }
+    clearstatcache(true, $p['config']);
+    if (!is_file($p['config'])) {
+        $ergebnis = array('stand' => 'ohne_datei', 'schluessel' => array());
+        return $cfg;
+    }
+    $text = @file_get_contents($p['config']);
+    $da = is_string($text) ? hp_cfg_aus_text($text) : array();
+    if (!isset($da['aktionstoken']) || $da['aktionstoken'] === '' || hp_wert_pruefen('aktionstoken', $da['aktionstoken']) !== '') {
+        $ergebnis = array('stand' => 'ohne_merkwort', 'schluessel' => array());
+        return $cfg;
+    }
+    $fehlend = array();
+    foreach (hp_vorgaben() as $k => $w) {
+        if (!array_key_exists($k, $da) && $k !== 'sprechtoken') {
+            $fehlend[$k] = $w;
+        }
+    }
+    if (!$fehlend) {
+        $ergebnis = array('stand' => 'vollstaendig', 'schluessel' => array());
+        return $cfg;
+    }
+    $eol = (strpos($text, "\r\n") !== false) ? "\r\n" : "\n";
+    if ($text !== '' && substr($text, -1) !== "\n") {
+        $text .= $eol;
+    }
+    foreach ($fehlend as $k => $w) {
+        $text .= $k . '="' . str_replace(array('"', "\r", "\n"), '', (string) $w) . '"' . $eol;
+    }
+    if (!hp_datei_schreiben($p['config'], $text)) {
+        hp_log('Konfiguration NICHT vervollstaendigt: homepod4lox.cfg liess sich nicht schreiben ('
+            . count($fehlend) . ' fehlende Schluessel).');
+        $ergebnis = array('stand' => 'fehler', 'schluessel' => array_keys($fehlend));
+        return $cfg;
+    }
+    hp_datei_schreiben($p['zweit'], $text);
+    hp_log('Konfiguration vervollstaendigt - ' . count($fehlend) . ' fehlende Vorgaben in homepod4lox.cfg geschrieben: '
+        . implode(', ', array_keys($fehlend)));
+    $ergebnis = array('stand' => 'ergaenzt', 'schluessel' => array_keys($fehlend));
     return $cfg;
 }
 

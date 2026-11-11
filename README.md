@@ -49,6 +49,12 @@ Nur von diesem LoxBerry. Gesendet ist `HTTP 200` mit Zeilenanfang `SPRECHEN;OK=1
 
 Eigenständiges Plugin (MIT, siehe `LICENSE`). Es lädt beim Einspielen pyatv (MIT, Pierre Ståhl) und miniaudio (MIT) aus PyPI; siehe `NOTICE`. „Apple“, „HomePod“ und „AirPlay“ sind Marken von Apple Inc.; dieses Plugin hat mit Apple nichts zu tun.
 
+## Neu in 0.9.4
+
+- **Konfiguration wird vervollständigt.** Fehlt in `homepod4lox.cfg` eine Einstellung, trägt das Plugin sie jetzt einmal als Zeile mit ihrer Vorgabe nach – am Ende einer Aktualisierung (`postupgrade.sh`) und beim Öffnen der Oberfläche. Bis 0.9.3 ergänzte es sie nur beim Lesen im Speicher. Die vorhandenen Zeilen bleiben unverändert stehen, auch unbekannte und solche, deren Wert das Plugin nicht annimmt; angehängt wird nur, was fehlt, mit den Zeilenenden der Datei. Die Einstellungen, mit denen das Plugin arbeitet, ändern sich dadurch nicht.
+- Geschrieben wird nur in eine Datei mit gültigem Aktionstoken, nicht während einer Aktualisierung, mit Rechten 0600 und derselben Zweitschrift wie beim Speichern. Ein fehlendes Sprechtoken wird nicht als leere Zeile nachgetragen: es entsteht wie bisher beim Öffnen der Oberfläche. Das Protokoll nennt die Namen der nachgetragenen Einstellungen, nie ihre Werte.
+- Geprüft auf dem Arbeitsplatz unter PHP 7.4 und 8.4 mit einem Prüfstand in nachgebildeter Gestalt; am LoxBerry noch nicht gemessen.
+
 ## Neu in 0.9.3
 
 - **Update-Schutz:** Lassen sich die Konfiguration oder die Geräteliste vor einem Update nicht sichern (etwa volle Karte, fehlende Rechte), bricht das Update jetzt ab, und die bisherige Fassung bleibt mit allen Einstellungen installiert. Bisher lief es weiter, und der Installer löschte die Originale. Dasselbe gilt, wenn kein LoxBerry-Verzeichnis gefunden wird. Eine vorhandene Sicherung wird erst ersetzt, wenn die neue vollständig und geprüft vorliegt.

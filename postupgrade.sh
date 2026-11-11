@@ -67,5 +67,25 @@ if [ -s "$GK" ]; then
         rm -f "$GK"
     fi
 fi
+# Konfiguration vervollstaendigen (0.9.4, Regeln/05): fehlende Vorgaben einmal als Zeile in homepod4lox.cfg - ueber
+# hp_lib.php (bin/hp_vervollstaendigen.php), ohne Token zu erzeugen. Das Plugin hat keinen Dienst und keinen Takt, also
+# hier. Mit Marke ruht das Vervollstaendigen; deshalb faellt sie unmittelbar davor (der trap raeumt sonst erst am Ende).
+# Laeuft als loxberry, Rechte 0600 bleiben. "cd /": Handstart aus einem fremden Heimverzeichnis (Regeln/06).
+hp_marke_weg
+HP_VV="$BASE/bin/plugins/$PFOLDER/hp_vervollstaendigen.php"
+if [ -f "$CF" ] && [ -f "$HP_VV" ]; then
+    if command -v php >/dev/null 2>&1; then
+        HP_VV_ZEILE=$(cd / && LBHOMEDIR="$BASE" LBPPLUGINDIR="$PFOLDER" php "$HP_VV" "$PFOLDER" 2>&1 | tail -1)
+        case "$HP_VV_ZEILE" in
+            *";STAND=ergaenzt;"*)     echo "<OK> Konfiguration vervollstaendigt: ${HP_VV_ZEILE#*SCHLUESSEL=}" ;;
+            *";STAND=vollstaendig;"*) echo "<OK> Konfiguration vollstaendig, nichts ergaenzt." ;;
+            *";STAND=ohne_merkwort;"*|*";STAND=ohne_datei;"*)
+                echo "<INFO> Konfiguration nicht vervollstaendigt (noch ohne Aktionstoken) - das Oeffnen der Oberflaeche schreibt sie vollstaendig." ;;
+            *) echo "<WARNING> Konfiguration nicht vervollstaendigt: ${HP_VV_ZEILE:-keine Ausgabe}. Das Oeffnen der Oberflaeche holt es nach." ;;
+        esac
+    else
+        echo "<WARNING> Konfiguration nicht vervollstaendigt: php wurde nicht gefunden."
+    fi
+fi
 echo "<OK> postupgrade abgeschlossen."
 exit 0
