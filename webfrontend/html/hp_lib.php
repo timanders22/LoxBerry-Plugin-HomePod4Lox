@@ -591,7 +591,9 @@ function hp_upgrade_laeuft()
     }
     $t = trim((string) @file_get_contents($m));
     $jetzt = time();
-    return ctype_digit($t) && $jetzt - (int) $t >= -300 && $jetzt - (int) $t <= HP_MARKE_MAX_S;
+    // preg_match statt der ctype-Funktion seit 0.9.5 (Regeln/03: ctype ist nicht garantiert geladen; ohne sie galt die
+    // Marke unter PHP 7.4 nie, und unter PHP 8 endete jeder Aufruf bei liegender Marke mit "undefined function").
+    return preg_match('/^[0-9]+\z/', $t) === 1 && $jetzt - (int) $t >= -300 && $jetzt - (int) $t <= HP_MARKE_MAX_S;
 }
 
 function hp_umgebung()

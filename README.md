@@ -49,6 +49,11 @@ Nur von diesem LoxBerry. Gesendet ist `HTTP 200` mit Zeilenanfang `SPRECHEN;OK=1
 
 Eigenständiges Plugin (MIT, siehe `LICENSE`). Es lädt beim Einspielen pyatv (MIT, Pierre Ståhl) und miniaudio (MIT) aus PyPI; siehe `NOTICE`. „Apple“, „HomePod“ und „AirPlay“ sind Marken von Apple Inc.; dieses Plugin hat mit Apple nichts zu tun.
 
+## Neu in 0.9.5
+
+- **Marke der Aktualisierung ohne PHP-Erweiterung ctype:** Ob gerade eine Aktualisierung läuft, prüfte das Plugin mit einer Funktion der Erweiterung ctype. Fehlt sie, galt die Marke unter PHP 7.4 nie (das Plugin sprach und vervollständigte die Konfiguration auch während einer Aktualisierung), und unter PHP 8 endete bei liegender Marke jeder Aufruf mit „Call to undefined function“. Jetzt prüft ein regulärer Ausdruck die Ziffern. Auf einem LoxBerry mit ctype (Debian liefert sie mit PHP aus) ändert sich nichts.
+- **Kopf der Sicherungsdatei mit Umlauten:** „Enthält … wäre“ statt „Enthaelt … waere“.
+
 ## Neu in 0.9.4
 
 - **Konfiguration wird vervollständigt.** Fehlt in `homepod4lox.cfg` eine Einstellung, trägt das Plugin sie jetzt einmal als Zeile mit ihrer Vorgabe nach – am Ende einer Aktualisierung (`postupgrade.sh`) und beim Öffnen der Oberfläche. Bis 0.9.3 ergänzte es sie nur beim Lesen im Speicher. Die vorhandenen Zeilen bleiben unverändert stehen, auch unbekannte und solche, deren Wert das Plugin nicht annimmt; angehängt wird nur, was fehlt, mit den Zeilenenden der Datei. Die Einstellungen, mit denen das Plugin arbeitet, ändern sich dadurch nicht.
