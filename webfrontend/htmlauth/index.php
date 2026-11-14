@@ -151,7 +151,7 @@ if ($hp_post) {
             $hp_tab = 'tab-sicherung';
             if ($hp_wert('aktion') === 'holen') {
                 $hp_js = hp_sicherung_datei($hp_cfg);
-                if ($hp_js === false) {
+                if ($hp_js === '') {
                     $hp_misslungen[] = hp_t('SICH.F_DATEI');
                     break;
                 }
@@ -161,32 +161,28 @@ if ($hp_post) {
                 echo $hp_js;
                 exit;
             }
-            if (!isset($_POST['zurueck_ok'])) {
-                $hp_misslungen[] = hp_t('SICH.F_HAKEN');
+            /* 0.9.6: Haken, hochgeladene Datei und Groessengrenze prueft das gemeinsame Sicherungsmodul
+             * (sicherung_eingang(), Modul 1.1.0, Entscheidung des Hausherrn 12.11.2026) - in jeder Linie gleich; der
+             * Haken zurueck_ok und sein Text kommen seither aus dem Modul (bis 0.9.5 eigene Texte der Linie), die Grenze
+             * ist die des Moduls (256 kB, bis 0.9.5 hier 64 kB). Ohne Haken wird nichts gelesen und nichts geaendert. */
+            list($hp_ein_roh, $hp_ein_ab) = sicherung_eingang(hp_sicherung_beschreibung(), $_POST, $_FILES, 'sicherung');
+            if ($hp_ein_ab !== null) {
+                $hp_ein_m = sicherung_meldungen(hp_sicherung_beschreibung(), $hp_ein_ab);
+                foreach ($hp_ein_m['fehler'] as $hp_ein_x) { $hp_misslungen[] = $hp_ein_x; }
                 break;
             }
-            if (!isset($_FILES['sicherung']['tmp_name']) || !is_string($_FILES['sicherung']['tmp_name'])
-                || !@is_uploaded_file($_FILES['sicherung']['tmp_name'])) {
-                $hp_misslungen[] = hp_t('SICH.F_KEINE_DATEI');
-                break;
-            }
-            if ((int) $_FILES['sicherung']['size'] > 65536) {
-                $hp_misslungen[] = hp_t('SICH.F_GROSS');
-                break;
-            }
-            list($hp_neu, $hp_mangel) = hp_sicherung_lesen((string) @file_get_contents($_FILES['sicherung']['tmp_name']));
-            if ($hp_neu === null) {
-                $hp_fehler[] = hp_t('SICH.F_ABGELEHNT');
-                $hp_fehler = array_merge($hp_fehler, $hp_mangel);
-                break;
-            }
-            if ($hp_neu['aktionstoken'] === '') {
-                $hp_neu['aktionstoken'] = $hp_cfg['aktionstoken'];
-            }
-            if (hp_config_speichern($hp_neu)) {
-                $hp_meldungen[] = hp_t('SICH.M_ZURUECK');
+            /* 0.9.6: das gemeinsame Sicherungsmodul liest und prueft (Kennzeichen, jeder Wert), verwirft Unbekanntes
+             * mit Namen, laesst bei einem leeren Wert den bisherigen stehen (so behaelt ein leeres Aktionstoken das
+             * geltende, wie bis 0.9.5) und aendert bei einer Beanstandung GAR NICHTS. Danach misst es die Zweitschrift
+             * und sagt, was mit dem Dienst geschah (hp_sicherung_beschreibung()). */
+            $hp_b = hp_sicherung_beschreibung();
+            $hp_r = sicherung_zurueckspielen($hp_b, $hp_ein_roh);
+            $hp_m = sicherung_meldungen($hp_b, $hp_r);
+            if (!$hp_r['ok']) {
+                $hp_fehler = array_merge($hp_fehler, $hp_m['fehler']);
             } else {
-                $hp_misslungen[] = hp_t('EINST.F_SPEICHERN');
+                $hp_misslungen = array_merge($hp_misslungen, $hp_m['fehler']);
+                $hp_meldungen = array_merge($hp_meldungen, $hp_m['hinweise']);
             }
             break;
 
@@ -628,7 +624,7 @@ foreach ($hp_geraete as $hp_g) { ?>
 <input data-role="none" type="hidden" name="formular" value="sicherung">
 <input data-role="none" type="hidden" name="aktion" value="holen">
 <div class="sm-knopfreihe">
-<button data-role="none" class="sm-btn sm-b-lesen" type="submit"><?= hp_e(hp_t('SICH.K_SICHERN')) ?></button>
+<button data-role="none" class="sm-btn sm-b-lesen" type="submit" name="hp_sichern" value="1"><?= hp_e(hp_t('SICH.K_SICHERN')) ?></button>
 </div>
 </form>
 <form action="index.php" method="post" enctype="multipart/form-data">
@@ -637,9 +633,9 @@ foreach ($hp_geraete as $hp_g) { ?>
 <input data-role="none" type="hidden" name="formular" value="sicherung">
 <input data-role="none" type="hidden" name="aktion" value="zurueck">
 <div class="sm-feld"><input data-role="none" type="file" name="sicherung" accept=".json,application/json"></div>
-<div class="sm-feld"><label><input data-role="none" type="checkbox" name="zurueck_ok" value="1"> <?= hp_e(hp_t('SICH.HAKEN')) ?></label></div>
+<?= sicherung_haken_zeile(hp_sicherung_beschreibung()) ?>
 <div class="sm-knopfreihe">
-<button data-role="none" class="sm-btn sm-b-aktion" type="submit"><?= hp_e(hp_t('SICH.K_ZURUECK')) ?></button>
+<button data-role="none" class="sm-btn sm-b-aktion" type="submit" name="hp_zurueck" value="1"><?= hp_e(hp_t('SICH.K_ZURUECK')) ?></button>
 </div>
 </form>
 </div>

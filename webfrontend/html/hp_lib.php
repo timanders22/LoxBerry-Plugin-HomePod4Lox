@@ -13,6 +13,12 @@ if (!function_exists('hp_e')) {
     }
 }
 
+/* 0.9.6: Das gemeinsame Sicherungsmodul (Abschrift von Werkzeuge/gemeinsam/sicherung.php, Auftrag des Hausherrn
+ * 12.11.2026): Einstellungen sichern und zurueckspielen nach denselben Regeln wie in den anderen Linien. Es legt beim
+ * Laden nur Funktionen an und antwortet bei direktem Aufruf mit 403. Die Beschreibung dieser Linie steht in
+ * hp_sicherung_beschreibung(). */
+require_once __DIR__ . '/sicherung.php';
+
 /* Feste Groessen an EINER Stelle. */
 define('HP_TEXT_MAX', 1000);
 define('HP_GLEICH_S', 30);            // gleicher Text an dasselbe Ziel: nicht wiederholen
@@ -1017,48 +1023,49 @@ function hp_geraete_zeilen(array $cfg)
  * Sicherung: die ganze Konfiguration samt beiden Token; die Geraeteliste entsteht durch Suchen neu
  * ================================================================== */
 
-function hp_sicherung_datei(array $cfg)
+/**
+ * 0.9.6: Die Beschreibung dieser Linie fuer das gemeinsame Sicherungsmodul (sicherung.php).
+ *
+ * Kennzeichen 'HomePod4Lox': so schreibt es der Sichern-Knopf seit 0.9.0 (gemessen 12.11.2026 an 0.9.0 bis 0.9.6).
+ * Jede Sicherung dieser Linie traegt es; einen Uebersetzer fuer Dateien ohne Kennzeichen braucht die Linie nicht,
+ * eine solche Datei wird wie bis 0.9.5 abgewiesen.
+ *
+ * Inhalt: beide Token. Das Sprechtoken ist das Token des EIGENEN Endpunkts (webfrontend/html/index.php vergleicht
+ * token mit sprechtoken) - also das Aktionstoken dieses Plugins fuer andere Plugins, kein uebernommenes fremdes;
+ * das Aktionstoken ist das Merkwort der Oberflaeche (daraus hp_formtoken()). Ein Sprechtoken eines anderen Plugins
+ * fuehrt diese Linie nicht. Die zwoelf Schluessel von hp_vorgaben() sind seit 0.9.0 dieselben; jeder muss in der
+ * Datei stehen (wie bis 0.9.5). Jeder Wert geht durch hp_wert_pruefen(), wie im Formular.
+ * Einen dauernd laufenden Dienst gibt es nicht: die naechste Ansage arbeitet mit den zurueckgespielten Werten.
+ */
+function hp_sicherung_beschreibung()
 {
-    $d = array('_plugin' => 'HomePod4Lox', '_stand' => (hp_fassung() !== '' ? hp_fassung() : 'unbekannt') . ', ' . date('Y-m-d H:i:s'),
-               '_hinweis' => hp_t('SICH.KOPF_HINWEIS'));
-    foreach (array_keys(hp_vorgaben()) as $k) {
-        $d[$k] = (string) $cfg[$k];
-    }
-    return json_encode($d, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $p = hp_paths();
+    return array(
+        'kennzeichen'  => 'HomePod4Lox',
+        'hinweis'      => hp_t('SICH.KOPF_HINWEIS'),
+        'fassung'      => 'hp_fassung',
+        'vorgaben'     => hp_vorgaben(),
+        'pruefen'      => function ($k, $w) {
+            $f = hp_wert_pruefen($k, $w);
+            return $f === '' ? '' : $k . ': ' . hp_t($f);
+        },
+        'jetzt'        => function () { return hp_config(false); },
+        'speichern'    => function ($neu) { return hp_config_speichern($neu); },
+        'zweitschrift' => function () { $q = hp_paths(); return array($q['config'], $q['zweit']); },
+        'nachziehen'   => function () { return array(hp_t('SICH.M_DIENST')); },
+        'log'          => 'hp_log',
+        't'            => 'hp_t',
+        // Die Seite maskiert jede Meldung bei der Ausgabe (hp_e); hier nicht ein zweites Mal.
+        'e'            => function ($s) { return (string) $s; },
+        'home'         => $p['home'],
+        'ordner'       => $p['plugin'],
+    );
 }
 
-/** Eine halb gueltige Datei aendert nichts. Rueckgabe array(Konfiguration|null, Beanstandungen). */
-function hp_sicherung_lesen($roh)
+/** Die Sicherungsdatei (0.9.6: gebaut vom gemeinsamen Modul); '' wenn sie sich nicht bilden laesst. */
+function hp_sicherung_datei(array $cfg)
 {
-    $d = json_decode((string) $roh, true);
-    if (!is_array($d) || !isset($d['_plugin']) || $d['_plugin'] !== 'HomePod4Lox') {
-        return array(null, array(hp_t('SICH.F_FREMD')));
-    }
-    $vorg = hp_vorgaben();
-    $neu = $vorg;
-    $mangel = array();
-    foreach ($d as $k => $w) {
-        $k = (string) $k;
-        if (substr($k, 0, 1) === '_') {
-            continue;
-        }
-        if (!array_key_exists($k, $vorg)) {
-            $mangel[] = sprintf(hp_t('SICH.F_SCHLUESSEL'), $k);
-            continue;
-        }
-        $f = hp_wert_pruefen($k, $w);
-        if ($f !== '') {
-            $mangel[] = $k . ': ' . hp_t($f);
-            continue;
-        }
-        $neu[$k] = $w;
-    }
-    foreach (array_keys($vorg) as $k) {
-        if (!array_key_exists($k, $d)) {
-            $mangel[] = sprintf(hp_t('SICH.F_FEHLT'), $k);
-        }
-    }
-    return array($mangel ? null : $neu, $mangel);
+    return sicherung_json(sicherung_bauen(hp_sicherung_beschreibung(), $cfg));
 }
 
 /* Einmalmeldung nach dem POST: Datei 0600, beim folgenden GET gelesen UND geloescht. */

@@ -4,6 +4,19 @@ Gibt Sprachansagen anderer LoxBerry-Plugins über AirPlay auf einem Apple HomePo
 
 **Ohne HomePod gebaut, nicht am Gerät gemessen, Rückmeldung erbeten.** Gemessen ist alles gegen eine AirPlay-Attrappe (die Attrappe aus den Tests von pyatv), nicht an einem echten HomePod. Ob man die Ansage hört, ist offen. Bitte melden, was bei Ihnen geschieht; im Reiter Test stehen dafür die Merkmale des Geräts und das Ergebnis der letzten Ansage. Beides trägt keine Adressen.
 
+## Neu in 0.9.6
+
+- **Verhalten geändert – Einstellungen sichern und zurückspielen nach der gemeinsamen Vorlage:** Die Knöpfe „Einstellungen sichern“ und „Einstellungen zurückspielen“ arbeiten jetzt mit demselben Sicherungsmodul wie die übrigen Plugins dieser Reihe. Für den Anwender ändert sich:
+  - Die Sicherungsdatei trägt im Kopf wie bisher das Kennzeichen des Plugins (`_plugin`, `HomePod4Lox`) und neu die Fassung (`_fassung`). Eine Datei eines anderen Plugins und eine Datei ohne Kennzeichen werden als Ganzes abgewiesen; es ändert sich dann nichts. Sicherungen dieses Plugins tragen das Kennzeichen seit 0.9.0 und werden weiter angenommen.
+  - Eine Einstellung, die diese Fassung nicht kennt, wird nicht übernommen und mit ihrem Namen gemeldet, nie mit ihrem Wert. Die übrigen Einstellungen werden zurückgespielt. Bis 0.9.5 wies ein unbekannter Name die ganze Datei ab.
+  - Ein leerer Wert in der Sicherung überschreibt keinen bestehenden; der bisherige Wert bleibt, und die Meldung nennt den Namen. Bisher galt das nur für das Aktionstoken.
+- Unverändert: Eine Datei mit einem unzulässigen Wert ändert gar nichts, und alle Beanstandungen werden genannt. Beide Token gehören in die Datei – das Sprechtoken ist das Token, mit dem andere Plugins über dieses Plugin sprechen. Nach dem Zurückspielen zieht die Zweitschrift mit, und die Meldung sagt, dass es keinen dauernd laufenden Dienst gibt.
+- **Haken beim Zurückspielen aus dem gemeinsamen Sicherungsmodul:** Der Haken „Ja, die geltenden Einstellungen durch die Sicherung ersetzen“ zwischen dem Feld für die Sicherungsdatei und dem Knopf „Einstellungen zurückspielen“ bleibt Pflicht, ab Werk aus; ohne ihn wird die Datei nicht gelesen und nichts geändert, und die Meldung sagt es. Neu ist, dass Haken, Text und Prüfung samt der Prüfung der hochgeladenen Datei (über das Formular gekommen, höchstens 256 KB) aus dem gemeinsamen Sicherungsmodul 1.1.0 kommen und in allen Plugins dieser Reihe gleich sind; bis 0.9.5 hatte dieses Plugin dafür eigene Texte. Die Grenze für die Datei lag bis 0.9.5 bei 64 KB.
+- **Gemeinsames Sicherungsmodul 1.2.0:** Das Modul kann jetzt, was einzelne Plugins dieser Reihe bisher selbst darum herum gebaut haben (Entscheidung „Einheitlichkeit“). An diesem Plugin ändert sich dadurch nichts.
+- **Gemeinsames Sicherungsmodul 1.2.1:** Ein Vermerk, der nie aus einer Sicherungsdatei kommt (etwa, dass ein Sprechtoken aus einem Nachbar-Plugin übernommen wurde), behält beim Zurückspielen seinen geltenden Wert. Dieses Plugin führt keinen solchen Vermerk; an ihm ändert sich nichts.
+- **Gemeinsames Sicherungsmodul 1.2.2:** Fehlt eine Einstellung in der Sicherung und setzt das Plugin ihren Wert nach einer eigenen Übergangsregel (etwa aus einer verwandten Einstellung derselben Sicherung), bleibt dieser Wert beim Zurückspielen, und die Meldung nennt ihn als nach einer Übergangsregel abgeleitet – nicht als Werkseinstellung und nicht als bisherigen Wert. An diesem Plugin ändert sich dadurch nichts.
+- Gemessen mit einem Prüfstand auf dem Arbeitsrechner unter PHP 7.4 und 8.4, der über einen Webserver die echten Knöpfe drückt, mit den Sicherungen der Fassungen 0.9.5, 0.9.3 und 0.9.0; am Gerät nicht gemessen.
+
 ## Was das Plugin tut
 
 - **Sprachziel für andere Plugins:** lokaler HTTP-Endpunkt mit Token, Bauart wie Chromecast 4 Lox NG.
