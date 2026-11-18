@@ -1049,7 +1049,14 @@ function hp_sicherung_beschreibung()
             $f = hp_wert_pruefen($k, $w);
             return $f === '' ? '' : $k . ': ' . hp_t($f);
         },
-        'jetzt'        => function () { return hp_config(false); },
+        // 0.9.7 (Modul 1.2.9, Bauform vom 15.11.2026): das Modul sieht die geltende Konfiguration ungefiltert -
+        // hp_config() liefert nur die Vorgabenschluessel; was die Datei sonst traegt, haengt hier an, damit das
+        // Zurueckspielen es beim Namen nennt, statt es still wegfallen zu lassen.
+        'jetzt'        => function () {
+            $q = hp_paths();
+            $w = is_file($q['config']) ? hp_cfg_aus_text((string) @file_get_contents($q['config'])) : array();
+            return hp_config(false) + $w;
+        },
         'speichern'    => function ($neu) { return hp_config_speichern($neu); },
         'zweitschrift' => function () { $q = hp_paths(); return array($q['config'], $q['zweit']); },
         'nachziehen'   => function () { return array(hp_t('SICH.M_DIENST')); },

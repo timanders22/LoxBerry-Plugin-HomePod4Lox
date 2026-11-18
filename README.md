@@ -4,6 +4,16 @@ Gibt Sprachansagen anderer LoxBerry-Plugins über AirPlay auf einem Apple HomePo
 
 **Ohne HomePod gebaut, nicht am Gerät gemessen, Rückmeldung erbeten.** Gemessen ist alles gegen eine AirPlay-Attrappe (die Attrappe aus den Tests von pyatv), nicht an einem echten HomePod. Ob man die Ansage hört, ist offen. Bitte melden, was bei Ihnen geschieht; im Reiter Test stehen dafür die Merkmale des Geräts und das Ergebnis der letzten Ansage. Beides trägt keine Adressen.
 
+## Neu in 0.9.7
+
+- **Verhalten geändert – Einstellungen sichern und zurückspielen mit dem gemeinsamen Sicherungsmodul 1.2.9 statt 1.2.2:**
+  - Eine Sicherungsdatei, die ein Editor mit einer unsichtbaren Markierung am Anfang (UTF-8-BOM) gespeichert hat, wird jetzt gelesen wie ohne sie. Bis 0.9.6 wurde sie als nicht lesbare Sicherung abgewiesen.
+  - Einträge der geltenden Einstellungen, die diese Fassung nicht kennt (etwa aus einer Bearbeitung von Hand), fallen beim Zurückspielen weiter weg, werden jetzt aber mit ihrem Namen genannt, nie mit ihrem Wert. Bis 0.9.6 fielen sie still weg.
+  - Jede unbekannte Einstellung wird in der Meldung genau einmal genannt.
+  - Die übrigen Neuerungen der Modulfassungen bis 1.2.9 betreffen Fähigkeiten, die dieses Plugin nicht nutzt; an ihm ändert sich dadurch nichts.
+- **Knopf „Dokumentation“:** `plugin.cfg` nennt jetzt `WEBSITE=` mit diesem Repository; LoxBerry übernimmt die Adresse bei der Installation und zeigt sie in der Plugin-Verwaltung als Knopf.
+- Sicherungen der früheren Fassungen werden weiter angenommen wie bisher; gemessen mit dem Prüfstand auf dem Arbeitsrechner unter PHP 7.4 und 8.4, der über einen Webserver die echten Knöpfe drückt und 3 Vorfassungen zurückspielt. Am Gerät nicht gemessen.
+
 ## Neu in 0.9.6
 
 - **Verhalten geändert – Einstellungen sichern und zurückspielen nach der gemeinsamen Vorlage:** Die Knöpfe „Einstellungen sichern“ und „Einstellungen zurückspielen“ arbeiten jetzt mit demselben Sicherungsmodul wie die übrigen Plugins dieser Reihe. Für den Anwender ändert sich:
