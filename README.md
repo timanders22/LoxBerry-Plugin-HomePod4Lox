@@ -4,6 +4,10 @@ Gibt Sprachansagen anderer LoxBerry-Plugins über AirPlay auf einem Apple HomePo
 
 **Ohne HomePod gebaut, nicht am Gerät gemessen, Rückmeldung erbeten.** Gemessen ist alles gegen eine AirPlay-Attrappe (die Attrappe aus den Tests von pyatv), nicht an einem echten HomePod. Ob man die Ansage hört, ist offen. Bitte melden, was bei Ihnen geschieht; im Reiter Test stehen dafür die Merkmale des Geräts und das Ergebnis der letzten Ansage. Beides trägt keine Adressen.
 
+## Neu in 0.9.9
+
+- Die Kopfzeile zeigt jetzt die installierte Fassung, einheitlich in allen Plugins.
+
 ## Neu in 0.9.8
 
 - **Einstellungen sichern und zurückspielen mit dem gemeinsamen Sicherungsmodul 1.2.11 statt 1.2.9:** Neu in 1.2.10 ist, dass ein leerer Wert auch in einem Teil der Sicherung, der nur aus einem einzelnen Wert besteht (etwa einem Zugangsschlüssel in einer eigenen Datei), einen gesetzten Wert nicht mehr überschreibt; er bleibt stehen und wird in der Meldung genannt. Dieses Plugin führt keinen solchen Teil; an seinem Verhalten ändert sich dadurch nichts. Gemessen mit dem Prüfstand auf dem Arbeitsrechner unter PHP 7.4 und 8.4 (3 Vorfassungen zurückgespielt). Am Gerät nicht gemessen.
