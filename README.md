@@ -4,6 +4,10 @@ Gibt Sprachansagen anderer LoxBerry-Plugins über AirPlay auf einem Apple HomePo
 
 **Ohne HomePod gebaut, nicht am Gerät gemessen, Rückmeldung erbeten.** Gemessen ist alles gegen eine AirPlay-Attrappe (die Attrappe aus den Tests von pyatv), nicht an einem echten HomePod. Ob man die Ansage hört, ist offen. Bitte melden, was bei Ihnen geschieht; im Reiter Test stehen dafür die Merkmale des Geräts und das Ergebnis der letzten Ansage. Beides trägt keine Adressen.
 
+## Neu in 0.9.10
+
+- **Gespeicherte Einstellungen, die beim Laden nicht gelten (Entscheidung des Hausherrn 23./24.11.2026, Regeln/05 „Lade-Beanstandungen“):** Trägt die Datei `homepod4lox.cfg` einen ungültigen Wert (von Hand bearbeitet oder aus einer alten Fassung), arbeitet das Plugin weiter mit der Vorgabe, sagt es aber jetzt: ein gelber Kasten über den Reitern nennt jedes Feld mit gespeichertem und verwendetem Wert, der Reiter *Test* zeigt die Zeile „Gelten die gespeicherten Einstellungen beim Laden so, wie sie gespeichert sind?“ rot, und das Protokoll nennt die Namen einmal je Änderung. Bis 0.9.9 geschah das still, und ein Aktionstoken außerhalb des Musters (nur Kleinbuchstaben a–f und Ziffern) wurde beim Öffnen der Oberfläche durch ein neues ersetzt und samt aller Vorgaben in die Datei geschrieben (jede Adresse im Miniserver bekam danach 403). Jetzt bleibt die Datei, wie sie ist: Speichern behält bei einem genannten Feld, das Sie nicht ändern, den gespeicherten Wert; die angezeigten Werte übernimmt nur der Knopf „Angezeigte Werte übernehmen“ mit gesetztem Haken. Ein vorhandenes Aktionstoken wird nie mehr ersetzt, und die Datei wird auch mit einem formwidrigen Token vervollständigt. Token erscheinen in keiner Meldung mit ihrem Wert, das Protokoll nennt keinen Wert. Gemeinsames Sicherungsmodul 1.3.0.
+
 ## Neu in 0.9.9
 
 - Die Kopfzeile zeigt jetzt die installierte Fassung, einheitlich in allen Plugins.

@@ -334,12 +334,17 @@ function hp_config($heilen = true)
             $traegt = array_intersect_key($z, $vorg);
             hp_config_lage('zweitschrift');
             hp_log('Konfiguration aus der Zweitschrift wiederhergestellt.');
-            hp_config_speichern($traegt + $vorg);
+            hp_config_speichern($traegt + $vorg, false);     // Heilung: ausdruecklich, kein "Dateiwert behalten"
         }
     }
     $cfg = $vorg;
     foreach ($vorg as $k => $v) {
         if (isset($traegt[$k]) && hp_wert_pruefen($k, $traegt[$k]) === '') {
+            $cfg[$k] = $traegt[$k];
+        } elseif ($k === 'aktionstoken' && isset($traegt[$k]) && is_string($traegt[$k]) && $traegt[$k] !== '') {
+            /* 0.9.10 (Lade-Beanstandungen, Regeln/05): ein vorhandenes Aktionstoken bleibt, auch ein formwidriges - es
+             * wird gemeldet (hp_lade_beanstandungen()). Bis 0.9.9 galt hier die Vorgabe '', und hp_config_vervollstaendigen()
+             * wuerfelte beim naechsten Oeffnen ein neues: jede Adresse im Miniserver bekam 403. */
             $cfg[$k] = $traegt[$k];
         }
     }
@@ -364,9 +369,13 @@ function hp_datei_schreiben($pfad, $inhalt, $rechte = 0600)
     return true;
 }
 
-function hp_config_speichern(array $cfg)
+function hp_config_speichern(array $cfg, $lade_behalten = true)
 {
     $p = hp_paths();
+    /* 0.9.10 (Lade-Beanstandungen, Regeln/05, Entscheidung des Hausherrn "Dateiwert behalten"): ein beim Laden
+     * beanstandetes Feld, das der neue Stand nicht geaendert hat, behaelt seinen gespeicherten Wert. Nicht beim
+     * Zurueckspielen, nicht bei der Heilung aus der Zweitschrift und nicht beim Knopf "Angezeigte Werte uebernehmen". */
+    if ($lade_behalten) { $cfg = hp_lade_behalten($cfg); }
     if (!is_dir($p['configdir']) && !@mkdir($p['configdir'], 0700, true)) {
         return false;
     }
@@ -410,6 +419,9 @@ function hp_config_vervollstaendigen(array $cfg, $token_erzeugen = true, &$ergeb
     }
     $roh = is_file($p['config']) ? hp_cfg_aus_text((string) @file_get_contents($p['config'])) : array();
     $neu = false;
+    /* Begruendete Abweichung von Regeln/05 "neu nur, wenn der Schluessel fehlt" (Entscheidung des Hausherrn
+     * 24.11.2026, Lade-Beanstandungen Punkt 1): ein LEERES Token erzeugt hier ein neues, weil das Formularmerkmal
+     * (hp_formtoken()) am Token haengt. Ein vorhandenes, auch formwidriges Token bleibt (hp_config()). */
     if ($token_erzeugen && (string) $cfg['aktionstoken'] === '') {
         $cfg['aktionstoken'] = hp_token_erzeugen();
         $neu = true;
@@ -435,7 +447,7 @@ function hp_config_vervollstaendigen(array $cfg, $token_erzeugen = true, &$ergeb
     }
     $text = @file_get_contents($p['config']);
     $da = is_string($text) ? hp_cfg_aus_text($text) : array();
-    if (!isset($da['aktionstoken']) || $da['aktionstoken'] === '' || hp_wert_pruefen('aktionstoken', $da['aktionstoken']) !== '') {
+    if (!isset($da['aktionstoken']) || $da['aktionstoken'] === '') {
         $ergebnis = array('stand' => 'ohne_merkwort', 'schluessel' => array());
         return $cfg;
     }
@@ -1057,7 +1069,7 @@ function hp_sicherung_beschreibung()
             $w = is_file($q['config']) ? hp_cfg_aus_text((string) @file_get_contents($q['config'])) : array();
             return hp_config(false) + $w;
         },
-        'speichern'    => function ($neu) { return hp_config_speichern($neu); },
+        'speichern'    => function ($neu) { return hp_config_speichern($neu, false); },     // 0.9.10: ausdruecklich
         'zweitschrift' => function () { $q = hp_paths(); return array($q['config'], $q['zweit']); },
         'nachziehen'   => function () { return array(hp_t('SICH.M_DIENST')); },
         'log'          => 'hp_log',
@@ -1067,6 +1079,64 @@ function hp_sicherung_beschreibung()
         'home'         => $p['home'],
         'ordner'       => $p['plugin'],
     );
+}
+
+/* ==================================================================
+ * Lade-Beanstandungen (0.9.10; Regeln/05, Sicherungsmodul 1.3.0)
+ *
+ * hp_config() setzt fuer einen ungueltigen gespeicherten Wert die Vorgabe ein. Das bleibt - aber jede solche Ersetzung
+ * wird gemeldet (Reiter Test rot, Seite gelb, einmal ins Protokoll) und nie in die Datei zurueckgeschrieben. Bis 0.9.9
+ * still, und das Oeffnen der Oberflaeche schrieb ein neues Aktionstoken samt aller Vorgaben in die Datei.
+ * ================================================================== */
+
+/** Die rohen Werte der Textkonfiguration (Zeilen schluessel="wert"), null = keine Datei. Schreibt nichts. */
+function hp_lade_roh()
+{
+    $p = hp_paths();
+    clearstatcache(true, $p['config']);
+    return is_file($p['config']) ? hp_cfg_aus_text((string) @file_get_contents($p['config'])) : null;
+}
+
+/** Die Beschreibung fuer die Lade-Beanstandungen. $maskiert = true: Namen, Werte und Pruefsaetze werden maskiert (der
+ *  gelbe Kasten gibt sie unmittelbar aus); false: roh wie beim Zurueckspielen (die Tabelle des Reiters Test maskiert). */
+function hp_lade_b($maskiert = true)
+{
+    $b = hp_sicherung_beschreibung();
+    $b['geheim'] = array('sprechtoken');      // nie mit Wert; aktionstoken ist es immer
+    if ($maskiert) {
+        $b['e'] = 'hp_e';
+        $pr = $b['pruefen'];
+        $b['pruefen'] = function ($k, $w) use ($pr) { $t = $pr($k, $w); return $t === '' ? '' : hp_e($t); };
+    }
+    return $b;
+}
+
+/** Die Lade-Beanstandungen: rohe Dateiwerte gegen den verwendeten Stand ($cfg, sonst hp_config(false)). */
+function hp_lade_beanstandungen($cfg = null, $maskiert = true)
+{
+    $d = hp_lade_roh();
+    if ($d === null) { return array(); }
+    return sicherung_lade_beanstandungen(hp_lade_b($maskiert), $d, is_array($cfg) ? $cfg : hp_config(false));
+}
+
+/** Vor dem Schreiben: jedes beanstandete Feld, das $cfg nicht geaendert hat, bekommt seinen Dateiwert zurueck. */
+function hp_lade_behalten(array $cfg)
+{
+    $d = hp_lade_roh();
+    if ($d === null) { return $cfg; }
+    $v = hp_config(false);
+    list($cfg, ) = sicherung_lade_behalten($cfg, $d, $v, sicherung_lade_beanstandungen(hp_lade_b(false), $d, $v));
+    return $cfg;
+}
+
+/** Einmal je Aenderung ins Protokoll (nur Namen und Gruende, nie Werte). */
+function hp_lade_melden(array $beanst)
+{
+    $d = hp_paths()['datadir'];
+    if ($d === '' || !is_dir($d)) { return; }
+    if (sicherung_lade_melden_faellig($beanst, $d . '/lade_beanstandungen.merk')) {
+        hp_log(sicherung_lade_protokollzeile($beanst));
+    }
 }
 
 /** Die Sicherungsdatei (0.9.6: gebaut vom gemeinsamen Modul); '' wenn sie sich nicht bilden laesst. */

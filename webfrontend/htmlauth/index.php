@@ -63,7 +63,31 @@ $hp_wert = function ($k, $vorgabe = '') {
     return (isset($_POST[$k]) && is_string($_POST[$k])) ? trim($_POST[$k]) : $vorgabe;
 };
 
-if ($hp_post) {
+if ($hp_post && sicherung_lade_eingang($_POST) !== '') {
+    /* 0.9.10: Lade-Beanstandungen - angezeigte Werte uebernehmen, nur mit Haken (Entscheidung des Hausherrn 24.11.2026,
+     * "Haken im gelben Kasten"); ohne ihn bleibt die Datei byte-gleich. Geschrieben ohne "Dateiwert behalten". */
+    $hp_tab = (isset($_POST['activetab']) && is_string($_POST['activetab']) && preg_match('/^tab-[a-z]+\z/', $_POST['activetab']))
+        ? $_POST['activetab'] : 'tab-settings';
+    $hp_lb = hp_lade_b(false);
+    if (sicherung_lade_eingang($_POST) !== 'ja') {
+        $hp_misslungen[] = sicherung_t('K_LADE_HAKEN_FEHLT', $hp_lb);
+    } else {
+        $hp_ld = hp_lade_roh();
+        $hp_lv = hp_config(false);
+        $hp_un = array();
+        if ($hp_ld !== null) {
+            list($hp_lneu, $hp_un) = sicherung_lade_uebernehmen_stand($hp_ld, $hp_lv, sicherung_lade_beanstandungen($hp_lb, $hp_ld, $hp_lv));
+            if ($hp_un && !hp_config_speichern($hp_lneu, false)) {
+                $hp_misslungen[] = hp_t('EINST.F_SPEICHERN');
+                $hp_un = array();
+            }
+        }
+        if ($hp_un) {
+            hp_log('Lade-Beanstandungen: angezeigte Werte uebernommen: ' . implode(', ', array_map('sicherung_name', $hp_un)));
+            $hp_meldungen[] = sprintf(sicherung_t('K_LADE_UEBERNOMMEN', $hp_lb), implode(', ', $hp_un));
+        }
+    }
+} elseif ($hp_post) {
     switch ($hp_formular) {
         case 'einstellungen':
             $hp_tab = 'tab-settings';
@@ -278,6 +302,12 @@ if ($hp_test_offen) {
     $hp_pruef[] = array($hp_rc === 0 ? true : ($hp_lokal ? false : null), hp_t('TEST.P_ESPEAK'), $hp_rc === 0 ? hp_t('ALLG.JA') : hp_t('TEST.P_ESPEAK_NEIN'));
     $hp_lage = hp_config_lage();
     $hp_pruef[] = array($hp_lage === 'ok' ? true : ($hp_lage === 'zweitschrift' ? null : false), hp_t('TEST.P_CONFIG'), hp_t('TEST.P_LAGE_' . strtoupper($hp_lage)));
+    /* 0.9.10: Lade-Beanstandungen (Regeln/05, Sicherungsmodul 1.3.0) - rot, solange ein gespeicherter Wert beim Laden
+     * nicht so gilt, wie er gespeichert ist. */
+    $hp_lb = hp_lade_b(false);
+    $hp_la = hp_lade_beanstandungen($hp_cfg, false);
+    $hp_pruef[] = array(!$hp_la, sicherung_t('K_LADE_FRAGE', $hp_lb),
+        $hp_la ? implode(' ', sicherung_lade_saetze($hp_lb, $hp_la)) : sicherung_t('K_LADE_KEINE', $hp_lb));
     $hp_pruef[] = array(hp_token_taugt((string) $hp_cfg['sprechtoken']), hp_t('TEST.P_TOKEN'), hp_t(hp_token_taugt((string) $hp_cfg['sprechtoken']) ? 'ALLG.JA' : 'ALLG.NEIN'));
     $hp_pruef[] = array((string) $hp_cfg['sprechen_ein'] === '1', hp_t('TEST.P_EIN'), hp_t((string) $hp_cfg['sprechen_ein'] === '1' ? 'ALLG.EIN' : 'ALLG.AUS'));
     $hp_pruef[] = array($hp_geraete ? true : false, hp_t('TEST.P_GERAETE'), sprintf(hp_t('KOPF.GERAETE_WERT'), $hp_da, count($hp_geraete)));
@@ -394,7 +424,12 @@ if ($hp_rahmen) {
 <?php if ($hp_hinweise) { ?>
 <div class="sm-warnung"><?= implode('<br>', array_map('hp_e', $hp_hinweise)) ?></div>
 <?php } ?>
+<?php /* 0.9.10: Lade-Beanstandungen (Regeln/05) - gelber Kasten; einmal je Aenderung ins Protokoll. */
+$hp_lade = hp_lade_beanstandungen();
+hp_lade_melden($hp_lade); ?>
 
+<?= sicherung_lade_kasten(hp_lade_b(true), isset($hp_lade) ? $hp_lade : hp_lade_beanstandungen(), '<input data-role="none" type="hidden" name="fmt" value="' . hp_e($hp_fmt)
+        . '"><input data-role="none" type="hidden" name="activetab" value="' . hp_e($hp_tab) . '">') ?>
 <!-- Statusuebersicht ueber der Reiterleiste (Kopf wie Dashboard, Entscheidung Nr. 43). -->
 <table class="sm-tbl sm-status">
 <tr><th><?= hp_e(hp_t('KOPF.EIGENSCHAFT')) ?></th><th><?= hp_e(hp_t('KOPF.WERT')) ?></th></tr>
