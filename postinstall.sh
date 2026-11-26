@@ -2,6 +2,15 @@
 # HomePod4Lox - postinstall.sh. Laeuft als loxberry, auch beim Upgrade (preupgrade -> Kopie -> postinstall -> postupgrade).
 # Richtet die venv neben dem Datenordner ein und laedt die Bibliothek nur aus PyPI (bin/requirements.txt). Der Paketordner bleibt
 # bei Upgrades liegen, wenn er zur verlangten Fassung passt. Ohne Bibliothek kann das Plugin nichts ausgeben: das wird gesagt.
+# [upgrade_daten] Gemeinsamer Baustein (Werkzeuge/gemeinsam/upgrade_daten.sh): vor allem anderen den Datenordner
+# [upgrade_daten] aus der Sicherung von preupgrade.sh zurueckspielen, ohne eine Datei der neuen Installation zu
+# [upgrade_daten] ueberschreiben. Ohne Sicherung (Neuinstallation) geschieht still nichts.
+if [ -f "$(dirname "$0")/upgrade_daten.sh" ] && . "$(dirname "$0")/upgrade_daten.sh"; then
+    upgrade_daten_zurueck "$3" "$5" "$(dirname "$0")" || :
+else
+    echo "<WARNING> Der Baustein upgrade_daten.sh fehlt neben $(basename "$0") - der Datenordner wurde nicht zurueckgespielt."
+fi
+
 ARGV3=$3
 ARGV5=$5
 PFOLDER="${ARGV3:-homepod4lox}"
